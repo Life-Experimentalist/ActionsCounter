@@ -4,7 +4,27 @@
 ## 🎯 **URL Customization Guide**
 
 **📝 Simple Setup Process:**
-All GitHub setup URLs follow the same pattern. Just replace `YOUR_USERNAME` with your actual GitHub username in any URL below.
+All GitHub setup URLs follow the same pattern. Just replace ### **Step 2: Configure Repository Secrets**
+**Replace `YOUR_USERNAME` with your GitHub username in this URL:**
+**[🔐 Go to your fork's secrets page](https://github.com/YOUR_USERNAME/ActionsCounter/settings/secrets/actions)**
+
+**Set these 2 secrets (⚠️ Enter values WITHOUT quotes):**
+
+**Secret #1:**
+```
+Name: ADMIN_PASSWORD
+Value: YourSecurePassword123!
+```
+*📝 Note: Enter the password directly - no quotes, no spaces before/after*
+
+**Secret #2:**
+```
+Name: PAT_TOKEN
+Value: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+*� Note: Paste your Personal Access Token exactly as generated - starts with `ghp_`*
+
+*💡 Note: PAT_TOKEN is your Personal Access Token for GitHub API access.*ME` with your actual GitHub username in any URL below.
 
 **🛠️ Interactive Tool Available:**
 After completing setup, you can use the interactive URL generator at:
@@ -167,7 +187,6 @@ https://YOUR_USERNAME.github.io/ActionsCounter
 | Secret Name | Required | Description | Example | Format Rules |
 |-------------|----------|-------------|---------|--------------|
 | `ADMIN_PASSWORD` | ✅ **YES** | Secure password for admin access | `MySecurePass123!` | ⚠️ **No quotes** - enter password directly |
-| `PAT_TOKEN` | ✅ **YES** | Personal Access Token with required scopes | `ghp_xxxxxxxxxxxx` | ⚠️ **No quotes** - paste token as-is (starts with `ghp_`) |
 
 ### 🗄️ **Database Mode Secrets** (Optional - Only for STORAGE_MODE=2)
 
@@ -220,7 +239,7 @@ Value: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 *📝 Note: Paste the token exactly as generated - starts with `ghp_`*
 
-### **Step 4: Configure Repository Variables**
+### **Step 3: Configure Repository Variables**
 **Replace `YOUR_USERNAME` with your GitHub username in this URL:**
 **[⚙️ Go to your fork's variables page](https://github.com/YOUR_USERNAME/ActionsCounter/settings/variables/actions)**
 
@@ -233,7 +252,7 @@ Value: 1
 ```
 *📝 Note: Enter just the number `1` - no quotes, no extra text*
 
-### **Step 5: Enable GitHub Pages**
+### **Step 4: Enable GitHub Pages**
 **Replace `YOUR_USERNAME` with your GitHub username in this URL:**
 **[📄 Go to your fork's Pages settings](https://github.com/YOUR_USERNAME/ActionsCounter/settings/pages)**
 
@@ -319,7 +338,7 @@ Create a `.env` file locally for reference (⚠️ **DO NOT COMMIT THIS**):
 
 # REQUIRED SECRETS (copy values WITHOUT quotes to GitHub)
 ADMIN_PASSWORD=your_secure_admin_password_here_min_8_chars
-PAT_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PAT_TOKEN=ghp_your_token_here
 
 # OPTIONAL SECRETS (Only for Database Mode - STORAGE_MODE=2)
 # Copy these values WITHOUT quotes to GitHub

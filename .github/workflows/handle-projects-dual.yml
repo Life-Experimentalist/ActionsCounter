@@ -107,7 +107,7 @@ jobs:
                     echo "📊 Storage mode from repository variables: $STORAGE_MODE"
                   else
                     STORAGE_MODE="${{ vars.STORAGE_MODE || '1' }}"
-                    echo "📊 Storage mode from secrets (fallback): $STORAGE_MODE"
+                    echo "📊 Storage mode from fallback: $STORAGE_MODE"
 
                     # Create repository variable if it doesn't exist
                     if [ -n "$STORAGE_MODE" ]; then
@@ -136,13 +136,9 @@ jobs:
                       ;;
                     *)
                       echo "mode=github_variables" >> $GITHUB_OUTPUT
-                      echo "� Using GITHUB VARIABLES storage mode (default)"
+                      echo "🔗 Using GITHUB VARIABLES storage mode (default)"
                       ;;
                   esac
-                  else
-                    echo "mode=repository" >> $GITHUB_OUTPUT
-                    echo "📁 Using REPOSITORY storage mode"
-                  fi
 
             - name: Validate authentication
               run: |
@@ -725,13 +721,13 @@ jobs:
                   # Store analytics as GitHub variable for frontend access
                   curl -X PATCH \
                     -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
                     -H "X-GitHub-Api-Version: 2022-11-28" \
                     "https://api.github.com/repos/${{ github.repository }}/actions/variables/ANALYTICS_DATA" \
                     -d "{\"name\":\"ANALYTICS_DATA\",\"value\":\"$ANALYTICS\"}" || \
                   curl -X POST \
                     -H "Accept: application/vnd.github+json" \
-                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
                     -H "X-GitHub-Api-Version: 2022-11-28" \
                     "https://api.github.com/repos/${{ github.repository }}/actions/variables" \
                     -d "{\"name\":\"ANALYTICS_DATA\",\"value\":\"$ANALYTICS\"}"

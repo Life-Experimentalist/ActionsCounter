@@ -11,8 +11,6 @@ import {
 
 export class UI {
 	private api: ActionsCounter;
-	private currentGitHubToken: string = "";
-	private currentPassword: string = "";
 	private storageMode: string = "unknown";
 	private analyticsData: any = null;
 
@@ -29,7 +27,7 @@ export class UI {
 	}
 
 	/**
-	 * Utility function to create DOM elements with optional class and text content
+	 * Enhanced utility function to create DOM elements with optional class and text content
 	 */
 	private createElement(
 		tag: string,
@@ -43,7 +41,7 @@ export class UI {
 	}
 
 	/**
-	 * Utility function to create and append child elements
+	 * Enhanced utility function to create and append child elements
 	 */
 	private createAndAppend(
 		parent: HTMLElement,
@@ -56,10 +54,79 @@ export class UI {
 		return element;
 	}
 
+	/**
+	 * Enhanced modal creation with animations and improved styling
+	 */
+	private createModal(
+		title: string,
+		width: string = "600px"
+	): {
+		modal: HTMLElement;
+		header: HTMLElement;
+		body: HTMLElement;
+		close: () => void;
+	} {
+		const modal = this.createElement("div", "modal-overlay");
+		const modalContent = this.createAndAppend(modal, "div", "modal");
+		modalContent.style.maxWidth = width;
+
+		// Create header
+		const header = this.createAndAppend(
+			modalContent,
+			"div",
+			"modal-header"
+		);
+		this.createAndAppend(header, "h3", undefined, title);
+
+		const closeBtn = this.createElement(
+			"button",
+			"close-btn",
+			"×"
+		) as HTMLButtonElement;
+		header.appendChild(closeBtn);
+
+		// Create body
+		const body = this.createAndAppend(modalContent, "div", "modal-body");
+
+		// Enhanced close functionality with animations
+		const close = () => {
+			modal.classList.remove("show");
+			setTimeout(() => {
+				if (modal.parentNode) {
+					modal.parentNode.removeChild(modal);
+				}
+			}, 300); // Match CSS transition duration
+		};
+
+		// Event handlers
+		closeBtn.onclick = close;
+		modal.addEventListener("click", (e) => {
+			if (e.target === modal) {
+				close();
+			}
+		});
+
+		// ESC key support
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				close();
+				document.removeEventListener("keydown", handleKeyDown);
+			}
+		};
+		document.addEventListener("keydown", handleKeyDown);
+
+		// Show modal with animation
+		document.body.appendChild(modal);
+		requestAnimationFrame(() => {
+			modal.classList.add("show");
+		});
+
+		return { modal, header, body, close };
+	}
+
 	private async init(): Promise<void> {
 		this.setupEventListeners();
 		await this.loadProjects();
-		this.setupTokenModal();
 		this.displayStorageMode();
 	}
 
@@ -209,12 +276,6 @@ export class UI {
 		const refreshBtn = document.getElementById("refresh-btn");
 		if (refreshBtn) {
 			refreshBtn.addEventListener("click", () => this.refreshData());
-		}
-
-		// Token configuration
-		const tokenBtn = document.getElementById("config-token-btn");
-		if (tokenBtn) {
-			tokenBtn.addEventListener("click", () => this.showTokenModal());
 		}
 	}
 
@@ -392,56 +453,113 @@ export class UI {
 		});
 	}
 
+	/**
+	 * Redirect user to GitHub Actions for manual CRUD operations
+	 */
+	private redirectToGitHubActions(
+		action: string,
+		projectName?: string
+	): void {
+		const actionsUrl = `https://github.com/${this.api.getRepoOwner()}/${this.api.getRepoName()}/actions/workflows/handle-projects-dual.yml`;
+
+		// Store operation details in localStorage for user reference
+		const operationDetails = {
+			action,
+			projectName: projectName || "",
+			timestamp: new Date().toISOString(),
+		};
+		localStorage.setItem(
+			"pendingOperation",
+			JSON.stringify(operationDetails)
+		);
+
+		// Show instructions modal
+		this.showActionInstructions(action, projectName, actionsUrl);
+	}
+
+	/**
+	 * Enhanced show instructions for GitHub Actions operations with better styling
+	 */
+	private showActionInstructions(
+		action: string,
+		projectName: string | undefined,
+		actionsUrl: string
+	): void {
+		const { body, close } = this.createModal(
+			`${action} Project - GitHub Actions`,
+			"600px"
+		);
+
+		const instructions = this.createAndAppend(body, "div", "");
+		instructions.innerHTML = `
+			<p><strong>To ${action.toLowerCase()} ${
+			projectName ? `"${projectName}"` : "a project"
+		}, follow these steps:</strong></p>
+			<ol style="text-align: left; margin: 15px 0; padding-left: 20px;">
+				<li style="margin-bottom: 8px;">Click "Go to GitHub Actions" below</li>
+				<li style="margin-bottom: 8px;">Click the "Run workflow" button</li>
+				<li style="margin-bottom: 8px;">Select action: "<strong>${action}</strong>"</li>
+				${
+					projectName
+						? `<li style="margin-bottom: 8px;">Enter project name: "<strong>${projectName}</strong>"</li>`
+						: '<li style="margin-bottom: 8px;">Enter the project name</li>'
+				}
+				<li style="margin-bottom: 8px;">Enter your admin password (from repository secrets)</li>
+				<li style="margin-bottom: 8px;">Click "Run workflow"</li>
+			</ol>
+			<div style="background: #e0f2fe; border: 1px solid #0288d1; border-radius: 8px; padding: 12px; margin: 15px 0;">
+				<p style="margin: 0; color: #01579b; font-size: 14px;"><strong>🔐 Security:</strong> The operation will be performed securely using your repository secrets.</p>
+			</div>
+		`;
+
+		const buttonContainer = this.createAndAppend(
+			body,
+			"div",
+			"modal-actions"
+		);
+
+		const cancelBtn = this.createAndAppend(
+			buttonContainer,
+			"button",
+			"btn btn-secondary",
+			"Cancel"
+		) as HTMLButtonElement;
+		const actionBtn = this.createAndAppend(
+			buttonContainer,
+			"button",
+			"btn btn-primary",
+			"Go to GitHub Actions"
+		) as HTMLButtonElement;
+
+		// Event handlers
+		cancelBtn.addEventListener("click", close);
+
+		actionBtn.addEventListener("click", () => {
+			window.open(actionsUrl, "_blank");
+			close();
+		});
+	}
+
 	private async handleAddProject(e: Event): Promise<void> {
 		e.preventDefault();
-
-		if (!this.currentGitHubToken || !this.currentPassword) {
-			this.showMessage(
-				"Please configure your GitHub token and admin password first.",
-				"error"
-			);
-			return;
-		}
 
 		const form = e.target as HTMLFormElement;
 		const formData = new FormData(form);
 
 		const name = formData.get("name") as string;
-		const description = formData.get("description") as string;
-		const url = formData.get("url") as string;
 
 		if (!name.trim()) {
 			this.showMessage("Project name is required.", "error");
 			return;
 		}
 
-		try {
-			this.showMessage("Adding project...", "info");
-			await this.api.addProject(
-				name,
-				description,
-				url,
-				this.currentPassword,
-				this.currentGitHubToken
-			);
-			this.showMessage("Project added successfully!", "success");
-			form.reset();
-			await this.loadProjects();
-		} catch (error) {
-			this.showMessage(`Error adding project: ${error}`, "error");
-		}
+		// Redirect to GitHub Actions for secure operation
+		this.redirectToGitHubActions("add", name);
+		form.reset();
 	}
 
 	private async handlePingProject(e: Event): Promise<void> {
 		e.preventDefault();
-
-		if (!this.currentGitHubToken) {
-			this.showMessage(
-				"Please configure your GitHub token first.",
-				"error"
-			);
-			return;
-		}
 
 		const form = e.target as HTMLFormElement;
 		const formData = new FormData(form);
@@ -453,15 +571,9 @@ export class UI {
 			return;
 		}
 
-		try {
-			this.showMessage("Pinging project...", "info");
-			await this.api.pingProject(name, this.currentGitHubToken);
-			this.showMessage("Project pinged successfully!", "success");
-			form.reset();
-			setTimeout(() => this.loadProjects(), 2000); // Wait for GitHub Actions to process
-		} catch (error) {
-			this.showMessage(`Error pinging project: ${error}`, "error");
-		}
+		// Redirect to GitHub Actions for secure operation
+		this.redirectToGitHubActions("ping", name);
+		form.reset();
 	}
 
 	public async deleteProject(projectName: string): Promise<void> {
@@ -469,26 +581,8 @@ export class UI {
 			return;
 		}
 
-		if (!this.currentGitHubToken || !this.currentPassword) {
-			this.showMessage(
-				"Please configure your GitHub token and admin password first.",
-				"error"
-			);
-			return;
-		}
-
-		try {
-			this.showMessage("Deleting project...", "info");
-			await this.api.deleteProject(
-				projectName,
-				this.currentPassword,
-				this.currentGitHubToken
-			);
-			this.showMessage("Project deleted successfully!", "success");
-			await this.loadProjects();
-		} catch (error) {
-			this.showMessage(`Error deleting project: ${error}`, "error");
-		}
+		// Redirect to GitHub Actions for secure operation
+		this.redirectToGitHubActions("remove", projectName);
 	}
 
 	public generateWebhook(projectName: string): void {
@@ -497,28 +591,24 @@ export class UI {
 	}
 
 	private showWebhookModal(webhookInfo: WebhookInfo): void {
-		const modal = this.createElement("div", "modal-overlay");
-		const modalContent = this.createAndAppend(modal, "div", "modal");
-
-		// Create header
-		const header = this.createAndAppend(
-			modalContent,
-			"div",
-			"modal-header"
+		const { body, close } = this.createModal(
+			"🔗 Webhook Information",
+			"700px"
 		);
-		this.createAndAppend(header, "h3", undefined, "Webhook Information");
 
-		const closeBtn = this.createElement(
-			"button",
-			"close-btn",
-			"×"
-		) as HTMLButtonElement;
-		closeBtn.onclick = () => modal.remove();
-		header.appendChild(closeBtn);
-
-		// Create body
-		const body = this.createAndAppend(modalContent, "div", "modal-body");
-		this.createAndAppend(body, "p", undefined, webhookInfo.description);
+		// Description
+		const description = this.createAndAppend(
+			body,
+			"p",
+			undefined,
+			webhookInfo.description
+		);
+		description.style.marginBottom = "24px";
+		description.style.padding = "16px";
+		description.style.backgroundColor = "#f0f9ff";
+		description.style.border = "1px solid #0ea5e9";
+		description.style.borderRadius = "8px";
+		description.style.color = "#0c4a6e";
 
 		// Create webhook fields safely using utility function
 		const createField = (
@@ -527,81 +617,167 @@ export class UI {
 			showCopy = false
 		) => {
 			const field = this.createElement("div", "webhook-field");
-			this.createAndAppend(field, "label", undefined, label + ":");
+			field.style.marginBottom = "20px";
+
+			const labelElement = this.createAndAppend(
+				field,
+				"label",
+				undefined,
+				label + ":"
+			);
+			labelElement.style.fontWeight = "600";
+			labelElement.style.marginBottom = "8px";
+			labelElement.style.display = "block";
+			labelElement.style.color = "var(--primary-color)";
+
+			const inputContainer = this.createElement("div");
+			inputContainer.style.display = "flex";
+			inputContainer.style.alignItems = "stretch";
+			inputContainer.style.gap = "8px";
 
 			const input = document.createElement(
 				label === "Headers" || label === "Body" ? "textarea" : "input"
 			);
 			input.setAttribute("readonly", "true");
+			input.style.fontFamily =
+				"'Monaco', 'Menlo', 'Ubuntu Mono', monospace";
+			input.style.fontSize = "13px";
+			input.style.flex = "1";
+			input.style.border = "2px solid var(--border-color)";
+			input.style.borderRadius = "6px";
+			input.style.padding = "12px";
+			input.style.backgroundColor = "#f8fafc";
+
 			if (input instanceof HTMLInputElement) {
 				input.value = value;
 			} else {
 				input.textContent = value;
+				(input as HTMLTextAreaElement).rows = 4;
 			}
-			field.appendChild(input);
+			inputContainer.appendChild(input);
 
 			if (showCopy) {
 				const copyBtn = this.createElement(
 					"button",
-					"copy-btn",
-					"Copy"
+					"btn btn-primary",
+					"📋 Copy"
 				) as HTMLButtonElement;
-				copyBtn.onclick = () => navigator.clipboard.writeText(value);
-				field.appendChild(copyBtn);
+				copyBtn.style.minWidth = "80px";
+				copyBtn.onclick = () => {
+					navigator.clipboard.writeText(value).then(() => {
+						const originalText = copyBtn.textContent;
+						copyBtn.textContent = "✅ Copied!";
+						copyBtn.style.backgroundColor = "var(--success-color)";
+						setTimeout(() => {
+							copyBtn.textContent = originalText;
+							copyBtn.style.backgroundColor = "";
+						}, 2000);
+					});
+				};
+				inputContainer.appendChild(copyBtn);
 			}
 
+			field.appendChild(inputContainer);
 			return field;
 		};
 
+		// Create fields
 		body.appendChild(createField("URL", webhookInfo.url, true));
 		body.appendChild(createField("Method", webhookInfo.method));
 		body.appendChild(
-			createField("Headers", JSON.stringify(webhookInfo.headers, null, 2))
+			createField(
+				"Headers",
+				JSON.stringify(webhookInfo.headers, null, 2),
+				true
+			)
 		);
 		body.appendChild(createField("Body", webhookInfo.body, true));
 
-		document.body.appendChild(modal);
+		// Action buttons
+		const actions = this.createAndAppend(body, "div", "modal-actions");
+		const closeBtn = this.createAndAppend(
+			actions,
+			"button",
+			"btn btn-secondary",
+			"Close"
+		) as HTMLButtonElement;
+		const testBtn = this.createAndAppend(
+			actions,
+			"button",
+			"btn btn-primary",
+			"🧪 Test Webhook"
+		) as HTMLButtonElement;
+
+		closeBtn.onclick = close;
+		testBtn.onclick = () => {
+			this.testWebhook(webhookInfo);
+		};
 	}
 
-	private setupTokenModal(): void {
-		const modal = document.getElementById("token-modal");
-		const form = document.getElementById("token-form") as HTMLFormElement;
+	private testWebhook(webhookInfo: WebhookInfo): void {
+		const { body, close } = this.createModal("🧪 Testing Webhook", "500px");
 
-		if (form) {
-			form.addEventListener("submit", (e) => {
-				e.preventDefault();
-				const formData = new FormData(form);
-				this.currentGitHubToken = formData.get(
-					"github-token"
-				) as string;
-				this.currentPassword = formData.get("admin-password") as string;
+		const status = this.createAndAppend(
+			body,
+			"div",
+			undefined,
+			"🔄 Sending test request..."
+		);
+		status.style.padding = "16px";
+		status.style.textAlign = "center";
+		status.style.marginBottom = "20px";
 
-				if (this.currentGitHubToken && this.currentPassword) {
-					this.showMessage(
-						"Configuration saved successfully!",
-						"success"
-					);
-					modal?.classList.add("hidden");
+		// Send test request
+		fetch(webhookInfo.url, {
+			method: webhookInfo.method,
+			headers: webhookInfo.headers,
+			body: webhookInfo.body,
+		})
+			.then((response) => {
+				if (response.ok) {
+					status.innerHTML = `
+					<div style="color: var(--success-color); font-weight: 600;">
+						✅ Webhook test successful!
+					</div>
+					<div style="font-size: 14px; margin-top: 8px; color: #6b7280;">
+						Response: ${response.status} ${response.statusText}
+					</div>
+				`;
 				} else {
-					this.showMessage("Please fill in both fields.", "error");
+					status.innerHTML = `
+					<div style="color: var(--error-color); font-weight: 600;">
+						❌ Webhook test failed
+					</div>
+					<div style="font-size: 14px; margin-top: 8px; color: #6b7280;">
+						Response: ${response.status} ${response.statusText}
+					</div>
+				`;
 				}
+			})
+			.catch((error) => {
+				status.innerHTML = `
+				<div style="color: var(--error-color); font-weight: 600;">
+					❌ Network error
+				</div>
+				<div style="font-size: 14px; margin-top: 8px; color: #6b7280;">
+					${error.message}
+				</div>
+			`;
 			});
-		}
-	}
 
-	private showTokenModal(): void {
-		const modal = document.getElementById("token-modal");
-		if (modal) {
-			modal.classList.remove("hidden");
-		}
+		const actions = this.createAndAppend(body, "div", "modal-actions");
+		const closeBtn = this.createAndAppend(
+			actions,
+			"button",
+			"btn btn-primary",
+			"Close"
+		) as HTMLButtonElement;
+		closeBtn.onclick = close;
 	}
 
 	public showUpdateForm(projectName: string): void {
-		// Implementation for update form - would need additional modal
-		this.showMessage(
-			`Update functionality for "${projectName}" coming soon!`,
-			"info"
-		);
+		// Redirect to GitHub Actions for secure operation
+		this.redirectToGitHubActions("update", projectName);
 	}
 
 	private async refreshData(): Promise<void> {

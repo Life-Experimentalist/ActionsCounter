@@ -43,6 +43,20 @@ export class ActionsCounter {
 	}
 
 	/**
+	 * Get repository owner
+	 */
+	getRepoOwner(): string {
+		return this.repoOwner;
+	}
+
+	/**
+	 * Get repository name
+	 */
+	getRepoName(): string {
+		return this.repoName;
+	}
+
+	/**
 	 * Generate secure project-specific webhook information
 	 * Uses project alias and auth token - no GitHub Token exposure
 	 */
@@ -146,28 +160,24 @@ export class ActionsCounter {
 	/**
 	 * Ping a project (public endpoint, no auth required)
 	 */
-	async pingProject(
-		projectName: string,
-		githubToken: string
-	): Promise<boolean> {
-		return this.dispatchEvent("ping", projectName, { githubToken });
+	async pingProject(projectName: string): Promise<boolean> {
+		return this.dispatchEvent("ping", projectName, {});
 	}
 
 	/**
 	 * Add a new project (requires admin password)
+	 * GitHub token is handled by repository secrets
 	 */
 	async addProject(
 		projectName: string,
 		description: string,
 		projectUrl: string,
-		password: string,
-		githubToken: string
+		password: string
 	): Promise<boolean> {
 		return this.dispatchEvent("add", projectName, {
 			description,
 			project_url: projectUrl,
 			password,
-			githubToken,
 		});
 	}
 
@@ -178,14 +188,12 @@ export class ActionsCounter {
 		projectName: string,
 		description: string,
 		projectUrl: string,
-		password: string,
-		githubToken: string
+		password: string
 	): Promise<boolean> {
 		return this.dispatchEvent("update", projectName, {
 			description,
 			project_url: projectUrl,
 			password,
-			githubToken,
 		});
 	}
 
@@ -194,12 +202,10 @@ export class ActionsCounter {
 	 */
 	async deleteProject(
 		projectName: string,
-		password: string,
-		githubToken: string
+		password: string
 	): Promise<boolean> {
 		return this.dispatchEvent("delete", projectName, {
 			password,
-			githubToken,
 		});
 	}
 
@@ -299,19 +305,9 @@ export class ActionsCounter {
 			description?: string;
 			project_url?: string;
 			password?: string;
-			githubToken: string;
 		}
 	): Promise<boolean> {
-		const {
-			description = "",
-			project_url = "",
-			password,
-			githubToken,
-		} = options;
-
-		if (!githubToken) {
-			throw new Error("GitHub token is required");
-		}
+		const { description = "", project_url = "", password } = options;
 
 		if (eventType !== "ping" && !password) {
 			throw new Error("Password required for admin operations");
@@ -328,12 +324,13 @@ export class ActionsCounter {
 		};
 
 		try {
+			// For public repositories, repository_dispatch can be called without authentication
+			// The workflow itself handles authentication using repository secrets
 			const response = await fetch(
 				`https://api.github.com/repos/${this.repoOwner}/${this.repoName}/dispatches`,
 				{
 					method: "POST",
 					headers: {
-						Authorization: `token ${githubToken}`,
 						Accept: "application/vnd.github.v3+json",
 						"Content-Type": "application/json",
 					},
@@ -343,6 +340,12 @@ export class ActionsCounter {
 
 			if (!response.ok) {
 				const errorText = await response.text();
+				// For operations that require authentication, provide helpful error message
+				if (response.status === 401 || response.status === 403) {
+					throw new Error(
+						`Authentication required. Please ensure repository has proper configuration and is accessible.`
+					);
+				}
 				throw new Error(
 					`GitHub API error: ${response.status} - ${errorText}`
 				);

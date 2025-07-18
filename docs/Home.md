@@ -2,10 +2,6 @@
 
 Welcome to the comprehensive documentation for ActionsCounter - a secure, scalable project analytics system powered by GitHub Actions.
 
-# ActionsCounter Documentation
-
-Welcome to the comprehensive documentation for ActionsCounter - a secure, scalable project analytics system powered by GitHub Actions.
-
 ## 🚀 **Getting Started**
 
 | Guide                               | Description                | Time  |

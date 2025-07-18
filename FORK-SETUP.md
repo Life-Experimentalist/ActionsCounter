@@ -237,10 +237,11 @@ Value: 1
 **Replace `YOUR_USERNAME` with your GitHub username in this URL:**
 **[📄 Go to your fork's Pages settings](https://github.com/YOUR_USERNAME/ActionsCounter/settings/pages)**
 
-1. **Source:** Deploy from a branch
-2. **Branch:** `main` (or `master`)
-3. **Folder:** `/ (root)`
-4. Click **Save**
+### **Step 6: Configure GitHub Pages to Deploy from Actions**
+
+1.  **Go to your fork's Pages settings:**
+	**[📄 GitHub Pages Settings](https://github.com/{OWNER}/{REPO}/settings/pages)**
+2.  Under **Source**, select **GitHub Actions**
 
 ### **Step 6: Test Your Setup**
 1. Go to your repository's Actions tab

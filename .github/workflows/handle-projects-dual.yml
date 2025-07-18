@@ -174,7 +174,7 @@ jobs:
                   else
                     # Manual workflow dispatch - validate admin password
                     if [ "${{ steps.inputs.outputs.password }}" != "${{ secrets.ADMIN_PASSWORD }}" ]; then
-                      echo "❌ Invalid admin password"
+                      echo "❌ Invalid admin password -- ${{ secrets.ADMIN_PASSWORD }} "
                       exit 1
                     fi
                     echo "✅ Admin password validated"

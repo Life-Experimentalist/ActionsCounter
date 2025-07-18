@@ -14,7 +14,7 @@ cd ActionsCounter
 ```
 
 ### 2. Generate Personal Access Token
-**[📝 Create GitHub Token](https://github.com/settings/tokens/new?scopes=repo,workflow,admin:repo_hook,read:org&description=ActionsCounter%20Standard%20Token&expiration=never)**
+<strong><a href="https://github.com/settings/tokens/new?scopes=repo,workflow,admin:repo_hook,read:org&description=ActionsCounter%20Standard%20Token&expiration=never" alt="Create GitHub Token" target="_blank">📝 Create GitHub Token</a></strong>
 
 Required scopes:
 - ✅ `repo` - Full repository access
@@ -29,7 +29,7 @@ Replace `{YOUR_USERNAME}` with your GitHub username, then add:
 
 ```
 ADMIN_PASSWORD = your_secure_password
-GITHUB_TOKEN = your_personal_access_token_from_step_2
+PAT_TOKEN = your_personal_access_token_from_step_2
 ```
 
 ### 4. Choose Storage Mode
@@ -79,7 +79,7 @@ Replace `{YOUR_USERNAME}` with your actual GitHub username in all URLs above.
 ### Via Secure Webhook (Recommended)
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -179,7 +179,7 @@ DB_SCHEMA = myschema
 
 ## 📄 License
 
-MIT License - see [LICENSE.md](LICENSE.md)
+Apache 2.0 License - see [LICENSE.md](LICENSE.md)
 
 ---
 

@@ -25,7 +25,7 @@ Value: your_secure_password_here
 ```
 
 ```
-Name: GITHUB_TOKEN
+Name: PAT_TOKEN
 Value: your_github_personal_access_token
 ```
 

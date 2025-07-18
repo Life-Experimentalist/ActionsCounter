@@ -41,7 +41,6 @@ https://github.com/YOUR_USERNAME/ActionsCounter/settings/pages
 ```
 
 **🎯 Actions Tab:**
-```
 After completing setup, you can use the interactive URL generator at:
 `https://Life-Experimentalist.github.io/ActionsCounter/setup-urls.html`
 
@@ -168,7 +167,7 @@ https://YOUR_USERNAME.github.io/ActionsCounter
 | Secret Name | Required | Description | Example | Format Rules |
 |-------------|----------|-------------|---------|--------------|
 | `ADMIN_PASSWORD` | ✅ **YES** | Secure password for admin access | `MySecurePass123!` | ⚠️ **No quotes** - enter password directly |
-| `GITHUB_TOKEN` | ✅ **YES** | Personal Access Token with required scopes | `ghp_xxxxxxxxxxxx` | ⚠️ **No quotes** - paste token as-is (starts with `ghp_`) |
+| `PAT_TOKEN` | ✅ **YES** | Personal Access Token with required scopes | `ghp_xxxxxxxxxxxx` | ⚠️ **No quotes** - paste token as-is (starts with `ghp_`) |
 
 ### 🗄️ **Database Mode Secrets** (Optional - Only for STORAGE_MODE=2)
 
@@ -216,7 +215,7 @@ Value: YourSecurePassword123!
 
 **Secret #2:**
 ```
-Name: GITHUB_TOKEN
+Name: PAT_TOKEN
 Value: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 *📝 Note: Paste the token exactly as generated - starts with `ghp_`*
@@ -276,7 +275,7 @@ With the new auto-detection feature, you only need to set **2 secrets**:
 1. **Fork the repository**
 2. **Set these 2 secrets only:**
    - `ADMIN_PASSWORD` - Your secure password
-   - `GITHUB_TOKEN` - Your personal access token
+   - `PAT_TOKEN` - Your personal access token
 3. **Set 1 variable:**
    - `STORAGE_MODE=1` (GitHub Variables mode)
 4. **Enable GitHub Pages**
@@ -292,7 +291,7 @@ You can use GitHub CLI to set multiple secrets at once:
 
 # Set secrets in bulk (quotes ARE needed for CLI commands)
 gh secret set ADMIN_PASSWORD --body "your_secure_password_here"
-gh secret set GITHUB_TOKEN --body "ghp_your_token_here"
+gh secret set PAT_TOKEN --body "ghp_your_token_here"
 
 # For Database Mode (Optional - quotes needed for CLI)
 gh secret set DB_HOST --body "your.postgres.host.com"
@@ -319,7 +318,7 @@ Create a `.env` file locally for reference (⚠️ **DO NOT COMMIT THIS**):
 
 # REQUIRED SECRETS (copy values WITHOUT quotes to GitHub)
 ADMIN_PASSWORD=your_secure_admin_password_here_min_8_chars
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PAT_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # OPTIONAL SECRETS (Only for Database Mode - STORAGE_MODE=2)
 # Copy these values WITHOUT quotes to GitHub
@@ -402,7 +401,7 @@ If you renamed your fork to something other than "ActionsCounter", replace both 
 **Essential Setup:**
 - [ ] 🍴 Repository forked successfully
 - [ ] 🔐 `ADMIN_PASSWORD` secret set (min 8 characters)
-- [ ] 🔑 `GITHUB_TOKEN` secret set (starts with `ghp_`)
+- [ ] 🔑 `PAT_TOKEN` secret set (starts with `ghp_`)
 - [ ] ⚙️ `STORAGE_MODE` variable set to `1`
 - [ ] 📄 GitHub Pages enabled (Deploy from main branch)
 
@@ -442,7 +441,7 @@ gh auth login
 
 # Set secrets quickly (double quotes required for PowerShell)
 gh secret set ADMIN_PASSWORD --body "YourSecurePassword123!"
-gh secret set GITHUB_TOKEN --body "ghp_your_token_here"
+gh secret set PAT_TOKEN --body "ghp_your_token_here"
 
 # Set variables (double quotes required for PowerShell)
 gh variable set STORAGE_MODE --body "1"
@@ -464,7 +463,7 @@ gh auth login
 
 # Set secrets (double quotes required for bash)
 gh secret set ADMIN_PASSWORD --body "YourSecurePassword123!"
-gh secret set GITHUB_TOKEN --body "ghp_your_token_here"
+gh secret set PAT_TOKEN --body "ghp_your_token_here"
 
 # Set variables (double quotes required for bash)
 gh variable set STORAGE_MODE --body "1"
@@ -493,7 +492,7 @@ echo "✅ Setup complete! Enable GitHub Pages manually in browser."
 - ✅ If using GitHub CLI, ensure quotes are in the command: `--body "password"`
 
 **"Authentication failed" or "No permission" errors:**
-- ✅ Check `GITHUB_TOKEN` secret is set correctly
+- ✅ Check `PAT_TOKEN` secret is set correctly
 - ✅ Verify token has required scopes: `repo`, `workflow`, `admin:repo_hook`, `read:org`
 - ✅ Confirm token hasn't expired
 - ✅ Try regenerating the token if issues persist
@@ -535,18 +534,18 @@ echo "✅ Setup complete! Enable GitHub Pages manually in browser."
 ```powershell
 # Delete all secrets and variables, then re-add them
 gh secret delete ADMIN_PASSWORD
-gh secret delete GITHUB_TOKEN
+gh secret delete PAT_TOKEN
 gh variable delete STORAGE_MODE
 
 # Re-add with correct values (quotes required for CLI commands)
 gh secret set ADMIN_PASSWORD --body "YourNewPassword123!"
-gh secret set GITHUB_TOKEN --body "ghp_your_new_token"
+gh secret set PAT_TOKEN --body "ghp_your_new_token"
 gh variable set STORAGE_MODE --body "1"
 ```
 
 **Test minimal setup:**
 1. Use only `STORAGE_MODE=1` (GitHub Variables)
-2. Set only `ADMIN_PASSWORD` and `GITHUB_TOKEN`
+2. Set only `ADMIN_PASSWORD` and `PAT_TOKEN`
 3. Enable GitHub Pages
 4. Run one simple action to test
 
@@ -582,7 +581,7 @@ When reporting issues, include:
 ```env
 # Required Secrets (absolute minimum)
 ADMIN_PASSWORD=TestPass123!
-GITHUB_TOKEN=ghp_your_token_here
+PAT_TOKEN=ghp_your_token_here
 
 # Required Variable
 STORAGE_MODE=1
@@ -605,7 +604,7 @@ jobs:
           project: 'test-project'
           category: 'testing'
           admin_password: ${{ secrets.ADMIN_PASSWORD }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
 ```
 
 ### 🎯 **Success Indicators**

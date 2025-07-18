@@ -19,7 +19,7 @@ Required scopes:
 Required secrets:
 ```
 ADMIN_PASSWORD = your_secure_admin_password
-GITHUB_TOKEN = your_personal_access_token_from_step_1
+PAT_TOKEN = your_personal_access_token_from_step_1
 ```
 
 Optional secrets (for Database Mode only):
@@ -52,7 +52,7 @@ Storage modes:
 
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -70,7 +70,7 @@ curl -X POST \
 
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -86,7 +86,7 @@ curl -X POST \
 
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -100,7 +100,7 @@ curl -X POST \
 
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -116,7 +116,7 @@ curl -X POST \
 
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -133,7 +133,7 @@ curl -X POST \
 
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -167,4 +167,4 @@ Alternative to API calls - use GitHub Actions tab:
 
 ---
 
-**Replace `YOUR_USERNAME` and `YOUR_GITHUB_TOKEN` with your actual values.**
+**Replace `YOUR_USERNAME` and `YOUR_PAT_TOKEN` with your actual values.**

@@ -116,7 +116,7 @@ DB_SCHEMA   = myschema
 ### Repository Commits Mode (STORAGE_MODE=3)
 
 **"Git operation failed":**
-- Ensure `GITHUB_TOKEN` has `contents:write` permission
+- Ensure `PAT_TOKEN` has `contents:write` permission
 - Check repository isn't at storage limits
 - Verify default branch is `main`
 
@@ -208,7 +208,7 @@ https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/actions/workflows/hand
 **Create New Token:**
 1. GitHub → Settings → Developer settings → Personal access tokens
 2. Generate new token with required scopes
-3. Update `GITHUB_TOKEN` secret
+3. Update `PAT_TOKEN` secret
 
 ---
 

@@ -154,7 +154,7 @@ This system supports three storage modes:
 Current Mode: ${currentModeDesc}
 
 To configure your ActionsCounter:
-1. Set repository secrets (ADMIN_PASSWORD, GITHUB_TOKEN)
+1. Set repository secrets (ADMIN_PASSWORD, PAT_TOKEN)
 2. Set STORAGE_MODE repository variable: 1, 2, or 3
 3. Enable GitHub Pages in repository settings
 

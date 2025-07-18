@@ -18,7 +18,7 @@ Increase project count by 1.
 **Example:**
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/actions/workflows/handle-projects-dual.yml/dispatches \
   -d '{
@@ -97,7 +97,7 @@ Display system analytics and statistics.
 
 **Required Headers:**
 ```bash
--H "Authorization: token YOUR_GITHUB_TOKEN"
+-H "Authorization: token YOUR_PAT_TOKEN"
 -H "Accept: application/vnd.github.v3+json"
 -H "Content-Type: application/json"
 ```
@@ -107,7 +107,7 @@ Display system analytics and statistics.
 #### Increment Project Count
 ```bash
 curl -X POST \
-  -H "Authorization: token YOUR_GITHUB_TOKEN" \
+  -H "Authorization: token YOUR_PAT_TOKEN" \
   -H "Accept: application/vnd.github.v3+json" \
   -H "Content-Type: application/json" \
   https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches \
@@ -126,7 +126,7 @@ const incrementProject = async (projectName) => {
   const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches', {
     method: 'POST',
     headers: {
-      'Authorization': 'token YOUR_GITHUB_TOKEN',
+      'Authorization': 'token YOUR_PAT_TOKEN',
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json'
     },
@@ -146,12 +146,12 @@ const incrementProject = async (projectName) => {
 ```python
 import requests
 
-def increment_project(project_name, github_token):
+def increment_project(project_name, PAT_TOKEN):
     """Secure increment - admin password from repository secrets"""
     url = "https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/dispatches"
 
     headers = {
-        "Authorization": f"token {github_token}",
+        "Authorization": f"token {PAT_TOKEN}",
         "Accept": "application/vnd.github.v3+json",
         "Content-Type": "application/json"
     }
@@ -179,7 +179,7 @@ def increment_project(project_name, github_token):
 const response = await fetch('https://api.github.com/repos/YOUR_USERNAME/ActionsCounter/actions/workflows/handle-projects-dual.yml/dispatches', {
     method: 'POST',
     headers: {
-      'Authorization': 'token YOUR_GITHUB_TOKEN',
+      'Authorization': 'token YOUR_PAT_TOKEN',
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json'
     },

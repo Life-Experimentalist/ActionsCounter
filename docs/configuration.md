@@ -14,7 +14,7 @@ Configure these in **Settings → Secrets and variables → Actions → Secrets*
 - **Example**: `MySecurePassword123!`
 - **Security**: Used to validate all write operations
 
-#### `GITHUB_TOKEN`
+#### `PAT_TOKEN`
 - **Purpose**: GitHub API access for workflow operations
 - **Format**: GitHub Personal Access Token
 - **Scopes Required**: `workflow`, `repo` (if private)
@@ -340,7 +340,7 @@ curl -H "Authorization: token YOUR_TOKEN" \
 ### Basic Setup
 - [ ] Repository forked/cloned
 - [ ] `ADMIN_PASSWORD` secret set
-- [ ] `GITHUB_TOKEN` secret set with correct scopes
+- [ ] `PAT_TOKEN` secret set with correct scopes
 - [ ] `STORAGE_MODE` variable set (1, 2, or 3)
 - [ ] Frontend configured (`REPO_OWNER`, `REPO_NAME`)
 - [ ] GitHub Pages enabled

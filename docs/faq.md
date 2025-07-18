@@ -191,7 +191,7 @@ Automated backups:
 # Add to your workflow
 - name: Backup Analytics
   run: |
-    curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+    curl -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
       "https://api.github.com/repos/${{ github.repository }}/actions/variables/ANALYTICS_DATA" \
       > backup-$(date +%Y%m%d).json
 ```

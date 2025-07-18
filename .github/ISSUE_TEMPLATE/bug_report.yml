@@ -1,0 +1,149 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug"]
+assignees: ["VKrishna04"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thank you for taking the time to report a bug! Please fill out this form completely to help us reproduce and fix the issue.
+
+    - type: checkboxes
+      id: prerequisites
+      attributes:
+          label: Prerequisites
+          description: Please confirm you have completed these steps before submitting a bug report.
+          options:
+              - label: I have searched existing issues for similar problems
+                required: true
+              - label: I have checked the [FAQ](https://github.com/Life-Experimentalist/ActionsCounter/blob/main/docs/faq.md) and [troubleshooting guide](https://github.com/Life-Experimentalist/ActionsCounter/blob/main/docs/troubleshooting.md)
+                required: true
+              - label: I am using the latest version of ActionsCounter
+                required: true
+              - label: I can reproduce this issue consistently
+                required: true
+
+    - type: textarea
+      id: description
+      attributes:
+          label: Bug Description
+          description: A clear and concise description of what the bug is.
+          placeholder: Describe what went wrong...
+      validations:
+          required: true
+
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to Reproduce
+          description: Provide detailed steps to reproduce the issue.
+          placeholder: |
+              1. Go to '...'
+              2. Click on '...'
+              3. Enter '...'
+              4. See error...
+      validations:
+          required: true
+
+    - type: textarea
+      id: expected
+      attributes:
+          label: Expected Behavior
+          description: What did you expect to happen?
+          placeholder: Describe the expected behavior...
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual
+      attributes:
+          label: Actual Behavior
+          description: What actually happened instead?
+          placeholder: Describe what actually happened...
+      validations:
+          required: true
+
+    - type: dropdown
+      id: storage-mode
+      attributes:
+          label: Storage Mode
+          description: Which storage mode are you using?
+          options:
+              - "Variables (Mode 1)"
+              - "Database (Mode 2)"
+              - "Repository Commits (Mode 3)"
+              - "Not sure / Haven't configured yet"
+      validations:
+          required: true
+
+    - type: dropdown
+      id: repository-type
+      attributes:
+          label: Repository Type
+          description: Is your repository public or private?
+          options:
+              - "Public"
+              - "Private"
+      validations:
+          required: true
+
+    - type: input
+      id: browser
+      attributes:
+          label: Browser
+          description: Which browser are you using? (e.g., Chrome 91, Firefox 89, Safari 14)
+          placeholder: "Chrome 91"
+      validations:
+          required: true
+
+    - type: input
+      id: version
+      attributes:
+          label: ActionsCounter Version
+          description: Which version/commit of ActionsCounter are you using?
+          placeholder: "Latest release or commit hash"
+      validations:
+          required: true
+
+    - type: textarea
+      id: logs
+      attributes:
+          label: Logs and Error Messages
+          description: |
+              Please include relevant logs and error messages:
+              - GitHub Actions logs (from repository → Actions tab)
+              - Browser console errors (F12 → Console)
+              - Network errors (F12 → Network)
+          placeholder: |
+              GitHub Actions Log:
+              ```
+              Paste workflow logs here...
+              ```
+
+              Browser Console:
+              ```
+              Paste console errors here...
+              ```
+      validations:
+          required: false
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Additional Context
+          description: Add any other context, screenshots, or information about the problem here.
+          placeholder: |
+              - Screenshots (if applicable)
+              - Configuration details
+              - Recent changes made
+              - Other relevant information
+      validations:
+          required: false
+
+    - type: markdown
+      attributes:
+          value: |
+              ---
+              **Thank you for your bug report!** 🙏
+
+              Our team will review this issue and respond as soon as possible. For urgent issues, please check our [support guide](https://github.com/Life-Experimentalist/ActionsCounter/blob/main/docs/support.md).

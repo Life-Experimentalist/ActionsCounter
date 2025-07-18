@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>ActionsCounter - Personal Setup URL Generator</title>
+		<style>
+			body {
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+					Roboto, sans-serif;
+				max-width: 800px;
+				margin: 0 auto;
+				padding: 20px;
+				background: #f8f9fa;
+			}
+			.container {
+				background: white;
+				padding: 30px;
+				border-radius: 10px;
+				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+			}
+			h1 {
+				color: #2d3748;
+				text-align: center;
+				margin-bottom: 30px;
+			}
+			.input-group {
+				margin-bottom: 20px;
+			}
+			label {
+				display: block;
+				margin-bottom: 5px;
+				font-weight: 600;
+				color: #4a5568;
+			}
+			input[type="text"] {
+				width: 100%;
+				padding: 12px;
+				border: 2px solid #e2e8f0;
+				border-radius: 6px;
+				font-size: 16px;
+				box-sizing: border-box;
+			}
+			input[type="text"]:focus {
+				outline: none;
+				border-color: #3182ce;
+			}
+			.url-section {
+				margin: 20px 0;
+				padding: 15px;
+				background: #f7fafc;
+				border-radius: 8px;
+				border-left: 4px solid #3182ce;
+			}
+			.url-title {
+				font-weight: 600;
+				color: #2d3748;
+				margin-bottom: 10px;
+			}
+			.url-box {
+				background: white;
+				padding: 10px;
+				border-radius: 4px;
+				border: 1px solid #e2e8f0;
+				font-family: "Monaco", "Menlo", monospace;
+				font-size: 14px;
+				word-break: break-all;
+			}
+			.copy-btn {
+				background: #3182ce;
+				color: white;
+				border: none;
+				padding: 8px 16px;
+				border-radius: 4px;
+				cursor: pointer;
+				margin-top: 8px;
+				font-size: 14px;
+			}
+			.copy-btn:hover {
+				background: #2c5282;
+			}
+			.copy-btn:active {
+				background: #2a4a7c;
+			}
+			.success {
+				background: #c6f6d5;
+				color: #22543d;
+				padding: 4px 8px;
+				border-radius: 4px;
+				font-size: 12px;
+			}
+			.instructions {
+				background: #bee3f8;
+				padding: 15px;
+				border-radius: 8px;
+				margin-bottom: 20px;
+				border-left: 4px solid #3182ce;
+			}
+			.back-link {
+				background: #e2e8f0;
+				padding: 10px 15px;
+				border-radius: 8px;
+				margin-bottom: 20px;
+				text-align: center;
+			}
+			.back-link a {
+				color: #3182ce;
+				text-decoration: none;
+				font-weight: 600;
+			}
+			.back-link a:hover {
+				text-decoration: underline;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="back-link">
+				<a href="../">← Back to ActionsCounter Dashboard</a>
+			</div>
+
+			<h1>🚀 ActionsCounter Setup URL Generator</h1>
+
+			<div class="instructions">
+				<strong>📋 Instructions:</strong>
+				<ol>
+					<li>Enter your GitHub username below</li>
+					<li>
+						Optionally change the repository name if you renamed
+						your fork
+					</li>
+					<li>
+						Click the copy buttons to get your personalized setup
+						URLs
+					</li>
+					<li>
+						Use these URLs to configure your ActionsCounter fork
+					</li>
+					<li>
+						After setup, come back to the
+						<a href="../" style="color: #3182ce">main dashboard</a>
+					</li>
+				</ol>
+			</div>
+
+			<div class="input-group">
+				<label for="username">🧑‍💻 Your GitHub Username:</label>
+				<input
+					type="text"
+					id="username"
+					placeholder="e.g., VKrishna04"
+					oninput="updateUrls()"
+				/>
+			</div>
+
+			<div class="input-group">
+				<label for="reponame">📁 Repository Name:</label>
+				<input
+					type="text"
+					id="reponame"
+					value="ActionsCounter"
+					oninput="updateUrls()"
+				/>
+				<small style="color: #718096"
+					>Keep as "ActionsCounter" unless you renamed your
+					fork</small
+				>
+			</div>
+
+			<div id="urls">
+				<div class="url-section">
+					<div class="url-title">
+						🔑 Personal Access Token Generator
+					</div>
+					<div class="url-box" id="token-url">
+						Enter your username above to generate URLs
+					</div>
+					<button class="copy-btn" onclick="copyUrl('token-url')">
+						📋 Copy URL
+					</button>
+				</div>
+
+				<div class="url-section">
+					<div class="url-title">🔐 Repository Secrets</div>
+					<div class="url-box" id="secrets-url">
+						Enter your username above to generate URLs
+					</div>
+					<button class="copy-btn" onclick="copyUrl('secrets-url')">
+						📋 Copy URL
+					</button>
+				</div>
+
+				<div class="url-section">
+					<div class="url-title">⚙️ Repository Variables</div>
+					<div class="url-box" id="variables-url">
+						Enter your username above to generate URLs
+					</div>
+					<button class="copy-btn" onclick="copyUrl('variables-url')">
+						📋 Copy URL
+					</button>
+				</div>
+
+				<div class="url-section">
+					<div class="url-title">📄 GitHub Pages Settings</div>
+					<div class="url-box" id="pages-url">
+						Enter your username above to generate URLs
+					</div>
+					<button class="copy-btn" onclick="copyUrl('pages-url')">
+						📋 Copy URL
+					</button>
+				</div>
+
+				<div class="url-section">
+					<div class="url-title">🎯 Actions Tab</div>
+					<div class="url-box" id="actions-url">
+						Enter your username above to generate URLs
+					</div>
+					<button class="copy-btn" onclick="copyUrl('actions-url')">
+						📋 Copy URL
+					</button>
+				</div>
+
+				<div class="url-section">
+					<div class="url-title">🌐 Your Dashboard (after setup)</div>
+					<div class="url-box" id="dashboard-url">
+						Enter your username above to generate URLs
+					</div>
+					<button class="copy-btn" onclick="copyUrl('dashboard-url')">
+						📋 Copy URL
+					</button>
+				</div>
+			</div>
+
+			<div
+				style="
+					margin-top: 30px;
+					padding: 20px;
+					background: #f0fff4;
+					border-radius: 8px;
+					border-left: 4px solid #38a169;
+				"
+			>
+				<strong style="color: #22543d">🎯 Next Steps:</strong>
+				<ol style="color: #22543d; margin: 10px 0">
+					<li>
+						Use the URLs above to configure your GitHub repository
+					</li>
+					<li>
+						Follow the complete setup guide in the FORK-SETUP.md
+						file
+					</li>
+					<li>
+						Return to your
+						<a
+							href="#"
+							onclick="goToDashboard()"
+							style="color: #3182ce"
+							>personal dashboard</a
+						>
+						when ready
+					</li>
+				</ol>
+			</div>
+		</div>
+
+		<script>
+			function updateUrls() {
+				const username = document
+					.getElementById("username")
+					.value.trim();
+				const reponame = document
+					.getElementById("reponame")
+					.value.trim();
+
+				if (!username) {
+					const placeholder =
+						"Enter your username above to generate URLs";
+					document.getElementById("token-url").textContent =
+						placeholder;
+					document.getElementById("secrets-url").textContent =
+						placeholder;
+					document.getElementById("variables-url").textContent =
+						placeholder;
+					document.getElementById("pages-url").textContent =
+						placeholder;
+					document.getElementById("actions-url").textContent =
+						placeholder;
+					document.getElementById("dashboard-url").textContent =
+						placeholder;
+					return;
+				}
+
+				const repo = reponame || "ActionsCounter";
+
+				document.getElementById(
+					"token-url"
+				).textContent = `https://github.com/settings/tokens/new?scopes=repo,workflow,admin:repo_hook,read:org&description=ActionsCounter%20Token%20for%20${username}`;
+
+				document.getElementById(
+					"secrets-url"
+				).textContent = `https://github.com/${username}/${repo}/settings/secrets/actions`;
+
+				document.getElementById(
+					"variables-url"
+				).textContent = `https://github.com/${username}/${repo}/settings/variables/actions`;
+
+				document.getElementById(
+					"pages-url"
+				).textContent = `https://github.com/${username}/${repo}/settings/pages`;
+
+				document.getElementById(
+					"actions-url"
+				).textContent = `https://github.com/${username}/${repo}/actions`;
+
+				document.getElementById(
+					"dashboard-url"
+				).textContent = `https://${username}.github.io/${repo}`;
+			}
+
+			function copyUrl(elementId) {
+				const urlElement = document.getElementById(elementId);
+				const url = urlElement.textContent;
+
+				if (url.includes("Enter your username")) {
+					alert("Please enter your GitHub username first!");
+					return;
+				}
+
+				navigator.clipboard
+					.writeText(url)
+					.then(() => {
+						const button = event.target;
+						const originalText = button.textContent;
+						button.innerHTML = "✅ Copied!";
+						button.style.background = "#38a169";
+
+						setTimeout(() => {
+							button.textContent = originalText;
+							button.style.background = "#3182ce";
+						}, 2000);
+					})
+					.catch(() => {
+						// Fallback for older browsers
+						const textArea = document.createElement("textarea");
+						textArea.value = url;
+						document.body.appendChild(textArea);
+						textArea.select();
+						document.execCommand("copy");
+						document.body.removeChild(textArea);
+
+						alert("URL copied to clipboard!");
+					});
+			}
+
+			function goToDashboard() {
+				const username = document
+					.getElementById("username")
+					.value.trim();
+				const reponame =
+					document.getElementById("reponame").value.trim() ||
+					"ActionsCounter";
+
+				if (username) {
+					window.open(
+						`https://${username}.github.io/${reponame}`,
+						"_blank"
+					);
+				} else {
+					alert("Please enter your GitHub username first!");
+				}
+			}
+
+			// Auto-focus on username input
+			document.getElementById("username").focus();
+
+			// Try to auto-detect username from current URL
+			window.onload = function () {
+				const hostname = window.location.hostname;
+				if (hostname.includes(".github.io")) {
+					const username = hostname.split(".")[0];
+					if (username && username !== "github") {
+						document.getElementById("username").value = username;
+						updateUrls();
+					}
+				}
+			};
+		</script>
+	</body>
+</html>

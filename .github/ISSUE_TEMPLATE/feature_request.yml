@@ -1,0 +1,154 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement
+labels: ["enhancement"]
+assignees: ["VKrishna04"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thank you for suggesting a new feature! Please provide as much detail as possible to help us understand your request.
+
+    - type: checkboxes
+      id: prerequisites
+      attributes:
+          label: Prerequisites
+          description: Please confirm you have completed these steps before submitting a feature request.
+          options:
+              - label: I have searched existing issues and feature requests
+                required: true
+              - label: I have checked the [project roadmap](https://github.com/Life-Experimentalist/ActionsCounter/discussions) for planned features
+                required: true
+              - label: This feature would benefit the broader ActionsCounter community
+                required: true
+
+    - type: textarea
+      id: summary
+      attributes:
+          label: Feature Summary
+          description: A brief, clear summary of the feature you'd like to see.
+          placeholder: "Add support for..."
+      validations:
+          required: true
+
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem/Use Case
+          description: What problem does this feature solve? Who would benefit from it?
+          placeholder: |
+              - What problem are you trying to solve?
+              - Who would use this feature?
+              - How common is this use case?
+      validations:
+          required: true
+
+    - type: textarea
+      id: solution
+      attributes:
+          label: Proposed Solution
+          description: How do you envision this feature working?
+          placeholder: |
+              Describe your ideal solution:
+              - How should it work?
+              - What should the user interface look like?
+              - How should it integrate with existing features?
+      validations:
+          required: true
+
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives Considered
+          description: What other approaches have you considered?
+          placeholder: |
+              - Other solutions you've thought about
+              - Workarounds you're currently using
+              - Similar features in other tools
+      validations:
+          required: false
+
+    - type: dropdown
+      id: priority
+      attributes:
+          label: Priority Level
+          description: How important is this feature to you?
+          options:
+              - "Low - Nice to have"
+              - "Medium - Would be helpful"
+              - "High - Important for my use case"
+              - "Critical - Blocking my adoption"
+      validations:
+          required: true
+
+    - type: dropdown
+      id: complexity
+      attributes:
+          label: Implementation Complexity (Your Estimate)
+          description: How complex do you think this feature would be to implement?
+          options:
+              - "Simple - Small change or addition"
+              - "Medium - Moderate development effort"
+              - "Complex - Major feature requiring significant work"
+              - "Not sure"
+      validations:
+          required: false
+
+    - type: checkboxes
+      id: areas
+      attributes:
+          label: Areas Affected
+          description: Which parts of ActionsCounter would this feature affect?
+          options:
+              - label: Frontend (User Interface)
+              - label: Backend (GitHub Actions workflows)
+              - label: API (Data handling and endpoints)
+              - label: Storage (Database, Variables, Repository)
+              - label: Documentation
+              - label: Configuration/Setup
+
+    - type: textarea
+      id: examples
+      attributes:
+          label: Examples and Mockups
+          description: |
+              Provide examples, mockups, or detailed descriptions of how this feature should work.
+          placeholder: |
+              - Screenshots or mockups
+              - Code examples
+              - User workflow examples
+              - Links to similar features in other tools
+      validations:
+          required: false
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Additional Context
+          description: Any other context, considerations, or information about this feature request.
+          placeholder: |
+              - Technical considerations
+              - Potential challenges
+              - Related features or dependencies
+              - Timeline preferences
+      validations:
+          required: false
+
+    - type: checkboxes
+      id: contribution
+      attributes:
+          label: Contribution
+          description: Would you be interested in helping implement this feature?
+          options:
+              - label: I would be willing to contribute to the implementation
+              - label: I would be willing to test this feature when available
+              - label: I would be willing to help with documentation
+
+    - type: markdown
+      attributes:
+          value: |
+              ---
+              **Thank you for your feature request!** 🚀
+
+              Our team will review this suggestion and provide feedback. Popular and well-defined features are prioritized for implementation.
+
+              **Want to contribute?** Check our [contributing guide](https://github.com/Life-Experimentalist/ActionsCounter/blob/main/docs/contributing.md) to get started!

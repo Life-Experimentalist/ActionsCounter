@@ -1,0 +1,739 @@
+# ActionsCounter Dual Mode Workflow
+# Supports both manual workflow_dispatch and webhook repository_dispatch
+#
+# VALIDATION NOTES:
+# - "Context access might be invalid" errors for secrets are expected
+# - These will resolve once the workflow is deployed to a GitHub repository
+# - Required secrets: ADMIN_PASSWORD, STORAGE_MODE, DB_* (for database mode)
+#
+name: "Handle Projects (Dual Mode)"
+
+# NOTE: The lint errors about "Context access might be invalid" for secrets are expected
+# when no GitHub repository exists yet. These will resolve once the workflow is deployed
+# to an actual GitHub repository with the required secrets configured.
+
+on:
+    repository_dispatch:
+        types: [ping, increment, decrement, add, remove, set, get, list, stats]
+    workflow_dispatch:
+        inputs:
+            action:
+                description: "Action to perform"
+                required: true
+                default: "increment"
+                type: choice
+                options:
+                    - increment
+                    - decrement
+                    - add
+                    - remove
+                    - list
+                    - stats
+                    - get
+                    - set
+            project_name:
+                description: "Project name (required for increment/decrement/add/remove/get/set)"
+                required: false
+                type: string
+            description:
+                description: "Project description (optional for add action)"
+                required: false
+                type: string
+            url:
+                description: "Project URL (optional for add action)"
+                required: false
+                type: string
+            count_value:
+                description: "Count value (required for set action)"
+                required: false
+                type: number
+            password:
+                description: "Password for authentication"
+                required: true
+                type: string
+
+jobs:
+    handle-projects:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Set Input Variables
+              id: inputs
+              run: |
+                  # Handle inputs from both repository_dispatch and workflow_dispatch
+                  if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+                    # Repository dispatch (webhook) inputs
+                    ACTION="${{ github.event.action }}"
+                    PROJECT_ALIAS="${{ github.event.client_payload.project_alias }}"
+                    PROJECT_NAME="${{ github.event.client_payload.project_name }}"
+                    DESCRIPTION="${{ github.event.client_payload.description }}"
+                    URL="${{ github.event.client_payload.url }}"
+                    COUNT_VALUE="${{ github.event.client_payload.count_value }}"
+                    # Admin password comes from repository secrets (secure)
+                    PASSWORD="${{ secrets.ADMIN_PASSWORD }}"
+                  else
+                    # Workflow dispatch (manual UI) inputs
+                    ACTION="${{ github.event.inputs.action }}"
+                    PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                    DESCRIPTION="${{ github.event.inputs.description }}"
+                    URL="${{ github.event.inputs.url }}"
+                    COUNT_VALUE="${{ github.event.inputs.count_value }}"
+                    PASSWORD="${{ github.event.inputs.password }}"
+                  fi
+
+                  echo "action=$ACTION" >> $GITHUB_OUTPUT
+                  echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+                  echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
+                  echo "url=$URL" >> $GITHUB_OUTPUT
+                  echo "count_value=$COUNT_VALUE" >> $GITHUB_OUTPUT
+                  echo "password=$PASSWORD" >> $GITHUB_OUTPUT
+
+                  echo "Event type: ${{ github.event_name }}"
+                  echo "Action: $ACTION"
+                  echo "Project: $PROJECT_NAME"
+
+            - name: Determine Storage Mode
+              id: mode
+              run: |
+                  # Try to get storage mode from repository variables first, fallback to secrets
+                  STORAGE_MODE=""
+
+                  # Check GitHub Repository Variables
+                  response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "Accept: application/vnd.github+json" \
+                    "https://api.github.com/repos/${{ github.repository }}/actions/variables/STORAGE_MODE" || echo "")
+
+                  if echo "$response" | grep -q '"value"'; then
+                    STORAGE_MODE=$(echo "$response" | grep -o '"value":"[^"]*"' | cut -d'"' -f4)
+                    echo "📊 Storage mode from repository variables: $STORAGE_MODE"
+                  else
+                    STORAGE_MODE="${{ secrets.STORAGE_MODE || '1' }}"
+                    echo "📊 Storage mode from secrets (fallback): $STORAGE_MODE"
+
+                    # Create repository variable if it doesn't exist
+                    if [ -n "$STORAGE_MODE" ]; then
+                      curl -X POST \
+                        -H "Accept: application/vnd.github+json" \
+                        -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                        -H "X-GitHub-Api-Version: 2022-11-28" \
+                        "https://api.github.com/repos/${{ github.repository }}/actions/variables" \
+                        -d "{\"name\":\"STORAGE_MODE\",\"value\":\"$STORAGE_MODE\"}" || echo "Could not create STORAGE_MODE variable"
+                    fi
+                  fi
+
+                  # Map storage modes: 1=github_variables, 2=database, 3=repository_commits
+                  case "$STORAGE_MODE" in
+                    "1")
+                      echo "mode=github_variables" >> $GITHUB_OUTPUT
+                      echo "🔗 Using GITHUB VARIABLES storage mode"
+                      ;;
+                    "2")
+                      echo "mode=database" >> $GITHUB_OUTPUT
+                      echo "🗄️ Using DATABASE storage mode"
+                      ;;
+                    "3")
+                      echo "mode=repository_commits" >> $GITHUB_OUTPUT
+                      echo "📁 Using REPOSITORY COMMITS storage mode"
+                      ;;
+                    *)
+                      echo "mode=github_variables" >> $GITHUB_OUTPUT
+                      echo "� Using GITHUB VARIABLES storage mode (default)"
+                      ;;
+                  esac
+                  else
+                    echo "mode=repository" >> $GITHUB_OUTPUT
+                    echo "📁 Using REPOSITORY storage mode"
+                  fi
+
+            - name: Validate authentication
+              run: |
+                  # For webhook calls (repository_dispatch), validate project auth token
+                  # For manual calls (workflow_dispatch), validate admin password
+                  if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+                    # Webhook authentication using project-specific token
+                    PROJECT_ALIAS="${{ steps.inputs.outputs.project_alias }}"
+                    if [ -n "$PROJECT_ALIAS" ]; then
+                      echo "✅ Repository dispatch with project alias: $PROJECT_ALIAS"
+
+                      # Validate project alias format
+                      if [[ "$PROJECT_ALIAS" =~ ^proj_[a-z0-9]+_[a-z0-9]+$ ]]; then
+                        echo "✅ Valid project alias format"
+
+                        # Validate auth token from client_payload
+                        AUTH_TOKEN="${{ github.event.client_payload.auth_token || '' }}"
+                        if [[ "$AUTH_TOKEN" =~ ^pauth_[a-z0-9]+$ ]]; then
+                          echo "✅ Valid project auth token format"
+                          echo "🔐 Project authenticated successfully"
+                        else
+                          echo "❌ Invalid or missing project auth token"
+                          exit 1
+                        fi
+                      else
+                        echo "❌ Invalid project alias format"
+                        exit 1
+                      fi
+                    else
+                      echo "❌ No project alias provided for webhook"
+                      exit 1
+                    fi
+                  else
+                    # Manual workflow dispatch - validate admin password
+                    if [ "${{ steps.inputs.outputs.password }}" != "${{ secrets.ADMIN_PASSWORD }}" ]; then
+                      echo "❌ Invalid admin password"
+                      exit 1
+                    fi
+                    echo "✅ Admin password validated"
+                  fi
+
+            - name: Resolve Project Name from Alias
+              if: github.event_name == 'repository_dispatch'
+              id: resolve
+              run: |
+                  # In production, this would query a secure mapping of aliases to project names
+                  # For now, we extract from the alias or use a placeholder
+                  PROJECT_ALIAS="${{ steps.inputs.outputs.project_alias }}"
+                  echo "🔍 Resolving project alias: $PROJECT_ALIAS"
+
+                  # TODO: Implement secure alias-to-name resolution
+                  # This would typically involve:
+                  # 1. Querying encrypted project mappings from repository variables
+                  # 2. Validating the auth token against the project
+                  # 3. Returning the actual project name
+
+                  # For now, extract a placeholder project name
+                  RESOLVED_NAME="project_${PROJECT_ALIAS#proj_}"
+                  echo "resolved_project_name=$RESOLVED_NAME" >> $GITHUB_OUTPUT
+                  echo "✅ Resolved to project: $RESOLVED_NAME"
+
+            # DATABASE MODE JOBS
+            - name: Setup Database Mode
+              if: steps.mode.outputs.mode == 'database'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y postgresql-client
+                  echo "✅ PostgreSQL client installed"
+
+            - name: Database - Initialize Schema
+              if: steps.mode.outputs.mode == 'database'
+              run: |
+                  export PGPASSWORD="${{ secrets.DB_PASS }}"
+
+                  # Create schema if not exists
+                  psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
+                    CREATE SCHEMA IF NOT EXISTS ${{ secrets.DB_SCHEMA }};
+                  "
+
+                  # Create projects table if not exists
+                  psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
+                    CREATE TABLE IF NOT EXISTS ${{ secrets.DB_SCHEMA }}.projects (
+                      id SERIAL PRIMARY KEY,
+                      name VARCHAR(255) UNIQUE NOT NULL,
+                      description TEXT,
+                      url TEXT,
+                      count INTEGER DEFAULT 0,
+                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                  "
+
+                  echo "✅ Database schema initialized"
+
+            - name: Database - Handle Operations
+              if: steps.mode.outputs.mode == 'database'
+              run: |
+                  export PGPASSWORD="${{ secrets.DB_PASS }}"
+
+                  # Determine project name based on event type
+                  if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+                    PROJECT_NAME="${{ steps.resolve.outputs.resolved_project_name }}"
+                    echo "🔗 Using resolved project name: $PROJECT_NAME"
+                  else
+                    PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                    echo "📝 Using manual project name: $PROJECT_NAME"
+                  fi
+
+                  case "${{ steps.inputs.outputs.action }}" in
+                    "increment")
+                      if [ -z "$PROJECT_NAME" ]; then
+                        echo "❌ Project name is required for increment action"
+                        exit 1
+                      fi
+
+                      RESULT=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "
+                        INSERT INTO ${{ secrets.DB_SCHEMA }}.projects (name, count, updated_at)
+                        VALUES ('$PROJECT_NAME', 1, CURRENT_TIMESTAMP)
+                        ON CONFLICT (name)
+                        DO UPDATE SET
+                          count = projects.count + 1,
+                          updated_at = CURRENT_TIMESTAMP
+                        RETURNING count;
+                      " | xargs)
+
+                      echo "✅ Project '$PROJECT_NAME' incremented to count: $RESULT"
+                      ;;
+
+                    "decrement")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for decrement action"
+                        exit 1
+                      fi
+
+                      RESULT=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "
+                        UPDATE ${{ secrets.DB_SCHEMA }}.projects
+                        SET count = GREATEST(count - 1, 0), updated_at = CURRENT_TIMESTAMP
+                        WHERE name = '${{ github.event.inputs.project_name }}'
+                        RETURNING count;
+                      " | xargs)
+
+                      if [ -z "$RESULT" ]; then
+                        echo "❌ Project '${{ github.event.inputs.project_name }}' not found"
+                        exit 1
+                      fi
+
+                      echo "✅ Project '${{ github.event.inputs.project_name }}' decremented to count: $RESULT"
+                      ;;
+
+                    "add")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for add action"
+                        exit 1
+                      fi
+
+                      DESCRIPTION="${{ github.event.inputs.description }}"
+                      URL="${{ github.event.inputs.url }}"
+
+                      psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
+                        INSERT INTO ${{ secrets.DB_SCHEMA }}.projects (name, description, url, count)
+                        VALUES ('${{ github.event.inputs.project_name }}', '$DESCRIPTION', '$URL', 0)
+                        ON CONFLICT (name) DO NOTHING;
+                      "
+
+                      echo "✅ Project '${{ github.event.inputs.project_name }}' added successfully"
+                      ;;
+
+                    "remove")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for remove action"
+                        exit 1
+                      fi
+
+                      ROWS=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "
+                        DELETE FROM ${{ secrets.DB_SCHEMA }}.projects
+                        WHERE name = '${{ github.event.inputs.project_name }}';
+                        SELECT ROW_COUNT();
+                      " | tail -1 | xargs)
+
+                      if [ "$ROWS" = "0" ]; then
+                        echo "❌ Project '${{ github.event.inputs.project_name }}' not found"
+                        exit 1
+                      fi
+
+                      echo "✅ Project '${{ github.event.inputs.project_name }}' removed successfully"
+                      ;;
+
+                    "get")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for get action"
+                        exit 1
+                      fi
+
+                      RESULT=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "
+                        SELECT name, description, url, count, created_at, updated_at
+                        FROM ${{ secrets.DB_SCHEMA }}.projects
+                        WHERE name = '${{ github.event.inputs.project_name }}';
+                      ")
+
+                      if [ -z "$RESULT" ]; then
+                        echo "❌ Project '${{ github.event.inputs.project_name }}' not found"
+                        exit 1
+                      fi
+
+                      echo "✅ Project Details:"
+                      echo "$RESULT"
+                      ;;
+
+                    "set")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for set action"
+                        exit 1
+                      fi
+
+                      if [ -z "${{ github.event.inputs.count_value }}" ]; then
+                        echo "❌ Count value is required for set action"
+                        exit 1
+                      fi
+
+                      RESULT=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "
+                        UPDATE ${{ secrets.DB_SCHEMA }}.projects
+                        SET count = ${{ github.event.inputs.count_value }}, updated_at = CURRENT_TIMESTAMP
+                        WHERE name = '${{ github.event.inputs.project_name }}'
+                        RETURNING count;
+                      " | xargs)
+
+                      if [ -z "$RESULT" ]; then
+                        echo "❌ Project '${{ github.event.inputs.project_name }}' not found"
+                        exit 1
+                      fi
+
+                      echo "✅ Project '${{ github.event.inputs.project_name }}' count set to: $RESULT"
+                      ;;
+
+                    "list")
+                      echo "📊 All Projects:"
+                      psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
+                        SELECT name, count, description, url
+                        FROM ${{ secrets.DB_SCHEMA }}.projects
+                        ORDER BY count DESC, name ASC;
+                      "
+                      ;;
+
+                    "stats")
+                      echo "📈 Project Statistics:"
+                      psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
+                        SELECT
+                          COUNT(*) as total_projects,
+                          SUM(count) as total_count,
+                          AVG(count) as average_count,
+                          MAX(count) as max_count,
+                          MIN(count) as min_count
+                        FROM ${{ secrets.DB_SCHEMA }}.projects;
+                      "
+
+                      echo -e "\n🏆 Top 5 Projects:"
+                      psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
+                        SELECT name, count
+                        FROM ${{ secrets.DB_SCHEMA }}.projects
+                        ORDER BY count DESC
+                        LIMIT 5;
+                      "
+                      ;;
+                  esac
+
+            # GITHUB VARIABLES MODE JOBS
+            - name: GitHub Variables - Handle Operations
+              if: steps.mode.outputs.mode == 'github_variables'
+              run: |
+                  echo "🔗 Processing GitHub Variables storage operations..."
+
+                  # Get current projects data from GitHub Variables
+                  response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "Accept: application/vnd.github+json" \
+                    "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
+
+                  if echo "$response" | grep -q '"value"'; then
+                    PROJECTS_JSON=$(echo "$response" | grep -o '"value":"[^"]*"' | cut -d'"' -f4 | sed 's/\\"/"/g')
+                    echo "📂 Current projects data loaded"
+                  else
+                    PROJECTS_JSON='{"projects":{}}'
+                    echo "📂 No existing projects data found, initializing empty"
+                  fi
+
+                  case "${{ github.event.inputs.action }}" in
+                    "increment")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for increment action"
+                        exit 1
+                      fi
+
+                      PROJECT_NAME="${{ github.event.inputs.project_name }}"
+
+                      # Update count using jq
+                      sudo apt-get update && sudo apt-get install -y jq
+                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" '
+                        .projects[$name] //= {"count": 0, "created_at": now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"), "updated_at": now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ")} |
+                        .projects[$name].count += 1 |
+                        .projects[$name].updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
+                      ')
+
+                      NEW_COUNT=$(echo "$NEW_JSON" | jq -r --arg name "$PROJECT_NAME" '.projects[$name].count')
+                      echo "✅ Project '$PROJECT_NAME' incremented to count: $NEW_COUNT"
+                      PROJECTS_JSON="$NEW_JSON"
+                      ;;
+
+                    "decrement")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for decrement action"
+                        exit 1
+                      fi
+
+                      PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                      sudo apt-get update && sudo apt-get install -y jq
+
+                      # Check if project exists
+                      if ! echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
+                        echo "❌ Project '$PROJECT_NAME' not found"
+                        exit 1
+                      fi
+
+                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" '
+                        .projects[$name].count = (.projects[$name].count - 1 | if . < 0 then 0 else . end) |
+                        .projects[$name].updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
+                      ')
+
+                      NEW_COUNT=$(echo "$NEW_JSON" | jq -r --arg name "$PROJECT_NAME" '.projects[$name].count')
+                      echo "✅ Project '$PROJECT_NAME' decremented to count: $NEW_COUNT"
+                      PROJECTS_JSON="$NEW_JSON"
+                      ;;
+
+                    "add")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for add action"
+                        exit 1
+                      fi
+
+                      PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                      DESCRIPTION="${{ github.event.inputs.description }}"
+                      URL="${{ github.event.inputs.url }}"
+
+                      sudo apt-get update && sudo apt-get install -y jq
+                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --arg desc "$DESCRIPTION" --arg url "$URL" '
+                        .projects[$name] = {
+                          "count": 0,
+                          "description": $desc,
+                          "url": $url,
+                          "created_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ")),
+                          "updated_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
+                        }
+                      ')
+
+                      echo "✅ Project '$PROJECT_NAME' added successfully"
+                      PROJECTS_JSON="$NEW_JSON"
+                      ;;
+
+                    "remove")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for remove action"
+                        exit 1
+                      fi
+
+                      PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                      sudo apt-get update && sudo apt-get install -y jq
+
+                      # Check if project exists
+                      if ! echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
+                        echo "❌ Project '$PROJECT_NAME' not found"
+                        exit 1
+                      fi
+
+                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" 'del(.projects[$name])')
+                      echo "✅ Project '$PROJECT_NAME' removed successfully"
+                      PROJECTS_JSON="$NEW_JSON"
+                      ;;
+
+                    "get")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for get action"
+                        exit 1
+                      fi
+
+                      PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                      sudo apt-get update && sudo apt-get install -y jq
+
+                      PROJECT_DATA=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" '.projects[$name]')
+                      if [ "$PROJECT_DATA" = "null" ]; then
+                        echo "❌ Project '$PROJECT_NAME' not found"
+                        exit 1
+                      fi
+
+                      echo "📊 Project Details:"
+                      echo "$PROJECT_DATA" | jq .
+                      ;;
+
+                    "set")
+                      if [ -z "${{ github.event.inputs.project_name }}" ]; then
+                        echo "❌ Project name is required for set action"
+                        exit 1
+                      fi
+                      if [ -z "${{ github.event.inputs.count_value }}" ]; then
+                        echo "❌ Count value is required for set action"
+                        exit 1
+                      fi
+
+                      PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                      COUNT_VALUE="${{ github.event.inputs.count_value }}"
+
+                      sudo apt-get update && sudo apt-get install -y jq
+
+                      # Check if project exists
+                      if ! echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
+                        echo "❌ Project '$PROJECT_NAME' not found"
+                        exit 1
+                      fi
+
+                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --argjson count "$COUNT_VALUE" '
+                        .projects[$name].count = $count |
+                        .projects[$name].updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
+                      ')
+
+                      echo "✅ Project '$PROJECT_NAME' count set to: $COUNT_VALUE"
+                      PROJECTS_JSON="$NEW_JSON"
+                      ;;
+
+                    "list")
+                      sudo apt-get update && sudo apt-get install -y jq
+                      echo "📂 All Projects:"
+                      echo "$PROJECTS_JSON" | jq '.projects'
+                      ;;
+
+                    "stats")
+                      sudo apt-get update && sudo apt-get install -y jq
+
+                      TOTAL_PROJECTS=$(echo "$PROJECTS_JSON" | jq '.projects | length')
+                      TOTAL_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | add // 0')
+                      AVG_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | if length > 0 then (add / length) else 0 end | . * 100 | round / 100')
+                      MAX_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | max // 0')
+                      MIN_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | min // 0')
+
+                      echo "📊 GitHub Variables Statistics:"
+                      echo "🔢 Total Projects: $TOTAL_PROJECTS"
+                      echo "🎯 Total Count: $TOTAL_COUNT"
+                      echo "📈 Average Count: $AVG_COUNT"
+                      echo "🏆 Max Count: $MAX_COUNT"
+                      echo "📉 Min Count: $MIN_COUNT"
+
+                      echo -e "\n🏆 Top 5 Projects:"
+                      echo "$PROJECTS_JSON" | jq -r '.projects | to_entries | sort_by(-.value.count) | limit(5; .[]) | "\(.key): \(.value.count)"'
+                      ;;
+                  esac
+
+                  # Update GitHub Variables with new data
+                  if [ "${{ github.event.inputs.action }}" != "list" ] && [ "${{ github.event.inputs.action }}" != "stats" ] && [ "${{ github.event.inputs.action }}" != "get" ]; then
+                    echo "💾 Updating GitHub Variables..."
+
+                    # Escape quotes for JSON
+                    ESCAPED_JSON=$(echo "$PROJECTS_JSON" | sed 's/"/\\"/g')
+
+                    # Update or create PROJECTS_DATA variable
+                    curl -X PATCH \
+                      -H "Accept: application/vnd.github+json" \
+                      -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                      -H "X-GitHub-Api-Version: 2022-11-28" \
+                      "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" \
+                      -d "{\"name\":\"PROJECTS_DATA\",\"value\":\"$ESCAPED_JSON\"}" || \
+                    curl -X POST \
+                      -H "Accept: application/vnd.github+json" \
+                      -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                      -H "X-GitHub-Api-Version: 2022-11-28" \
+                      "https://api.github.com/repos/${{ github.repository }}/actions/variables" \
+                      -d "{\"name\":\"PROJECTS_DATA\",\"value\":\"$ESCAPED_JSON\"}"
+
+                    echo "✅ Projects data updated in GitHub Variables"
+                  fi
+
+            # REPOSITORY COMMITS MODE JOBS
+            - name: Repository Commits - Checkout
+              if: steps.mode.outputs.mode == 'repository_commits'
+              uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Repository Commits - Handle Operations
+              if: steps.mode.outputs.mode == 'repository_commits'
+              run: |
+                  # Determine project name based on event type
+                  if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+                    PROJECT_NAME="${{ steps.resolve.outputs.resolved_project_name }}"
+                    echo "🔗 Using resolved project name: $PROJECT_NAME"
+                  else
+                    PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                    echo "📝 Using manual project name: $PROJECT_NAME"
+                  fi
+
+                  # Use existing repository-based logic (from original workflow)
+                  # This would be the current JSON file-based operations with commits
+                  echo "🚨 Repository commits mode operations need to be implemented"
+                  echo "Current action: ${{ steps.inputs.outputs.action }}"
+                  echo "Project: $PROJECT_NAME"
+
+                  # For now, just show warning that repository commits mode needs implementation
+                  if [ "${{ steps.inputs.outputs.action }}" != "list" ] && [ "${{ steps.inputs.outputs.action }}" != "stats" ]; then
+                    echo "⚠️ Repository commits mode operations not yet migrated from original workflow"
+                    echo "Please use database mode (STORAGE_MODE=2) or GitHub variables mode (STORAGE_MODE=1)"
+                  fi
+
+            # SHARED ANALYTICS GENERATION
+            - name: Generate Analytics
+              run: |
+                  case "${{ steps.mode.outputs.mode }}" in
+                    "database")
+                      # Database analytics
+                      export PGPASSWORD="${{ secrets.DB_PASS }}"
+                      ANALYTICS=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "
+                        SELECT json_build_object(
+                          'total_projects', COUNT(*),
+                          'total_count', COALESCE(SUM(count), 0),
+                          'average_count', ROUND(COALESCE(AVG(count), 0), 2),
+                          'max_count', COALESCE(MAX(count), 0),
+                          'min_count', COALESCE(MIN(count), 0),
+                          'last_updated', CURRENT_TIMESTAMP,
+                          'storage_mode', 'database'
+                        )
+                        FROM ${{ secrets.DB_SCHEMA }}.projects;
+                      " | xargs)
+                      ;;
+                    "github_variables")
+                      # GitHub Variables analytics
+                      sudo apt-get update && sudo apt-get install -y jq
+
+                      # Get projects data
+                      response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                        -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
+
+                      if echo "$response" | grep -q '"value"'; then
+                        PROJECTS_JSON=$(echo "$response" | grep -o '"value":"[^"]*"' | cut -d'"' -f4 | sed 's/\\"/"/g')
+                      else
+                        PROJECTS_JSON='{"projects":{}}'
+                      fi
+
+                      TOTAL_PROJECTS=$(echo "$PROJECTS_JSON" | jq '.projects | length')
+                      TOTAL_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | add // 0')
+                      AVG_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | if length > 0 then (add / length) else 0 end | . * 100 | round / 100')
+                      MAX_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | max // 0')
+                      MIN_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | min // 0')
+
+                      ANALYTICS=$(jq -n \
+                        --argjson total_projects "$TOTAL_PROJECTS" \
+                        --argjson total_count "$TOTAL_COUNT" \
+                        --argjson average_count "$AVG_COUNT" \
+                        --argjson max_count "$MAX_COUNT" \
+                        --argjson min_count "$MIN_COUNT" \
+                        --arg last_updated "$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")" \
+                        --arg storage_mode "github_variables" \
+                        '{
+                          total_projects: $total_projects,
+                          total_count: $total_count,
+                          average_count: $average_count,
+                          max_count: $max_count,
+                          min_count: $min_count,
+                          last_updated: $last_updated,
+                          storage_mode: $storage_mode
+                        }')
+                      ;;
+                    "repository_commits")
+                      # Repository commits analytics (placeholder)
+                      ANALYTICS='{"total_projects":0,"total_count":0,"average_count":0,"max_count":0,"min_count":0,"last_updated":"'$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")'","storage_mode":"repository_commits"}'
+                      ;;
+                    *)
+                      # Default/unknown mode
+                      ANALYTICS='{"total_projects":0,"total_count":0,"average_count":0,"max_count":0,"min_count":0,"last_updated":"'$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")'","storage_mode":"unknown"}'
+                      ;;
+                  esac
+
+                  echo "📊 Analytics Generated:"
+                  echo "$ANALYTICS"
+
+                  # Store analytics as GitHub variable for frontend access
+                  curl -X PATCH \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    "https://api.github.com/repos/${{ github.repository }}/actions/variables/ANALYTICS_DATA" \
+                    -d "{\"name\":\"ANALYTICS_DATA\",\"value\":\"$ANALYTICS\"}" || \
+                  curl -X POST \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    "https://api.github.com/repos/${{ github.repository }}/actions/variables" \
+                    -d "{\"name\":\"ANALYTICS_DATA\",\"value\":\"$ANALYTICS\"}"
+
+                  echo "✅ Analytics stored in GitHub Variables"

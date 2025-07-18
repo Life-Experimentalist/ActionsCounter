@@ -1,0 +1,77 @@
+name: 🚀 Deploy GitHub Pages with Auto-Detection
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+concurrency:
+    group: "pages"
+    cancel-in-progress: false
+
+jobs:
+    build-and-deploy:
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: 📥 Checkout repository
+              uses: actions/checkout@v4
+
+            - name: 🔧 Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+                  cache: "npm"
+                  cache-dependency-path: frontend/package-lock.json
+
+            - name: 📦 Install dependencies
+              working-directory: frontend
+              run: npm ci
+
+            - name: 🏗️ Inject repository information
+              working-directory: frontend
+              run: |
+                  echo "🔄 Injecting repository info: ${{ github.repository_owner }}/${{ github.event.repository.name }}"
+
+                  # Replace placeholders in main.ts
+                  sed -i 's/__REPO_OWNER_PLACEHOLDER__/${{ github.repository_owner }}/g' src/main.ts
+                  sed -i 's/__REPO_NAME_PLACEHOLDER__/${{ github.event.repository.name }}/g' src/main.ts
+
+                  # Replace placeholders in index.html
+                  sed -i 's/__REPO_OWNER_PLACEHOLDER__/${{ github.repository_owner }}/g' index.html
+                  sed -i 's/__REPO_NAME_PLACEHOLDER__/${{ github.event.repository.name }}/g' index.html
+
+                  # Verify injection worked
+                  echo "✅ Injected values:"
+                  grep -n "Life-Experimentalist\|ActionsCounter" src/main.ts index.html || echo "No hardcoded values found (good!)"
+
+            - name: 🏗️ Build application
+              working-directory: frontend
+              run: npm run build
+
+            - name: 📋 Setup Pages
+              uses: actions/configure-pages@v4
+
+            - name: 📤 Upload artifact
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: frontend/dist
+
+            - name: 🚀 Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v4
+
+            - name: ✅ Deployment Summary
+              run: |
+                  echo "🎉 Deployment completed successfully!"
+                  echo "📍 Repository: ${{ github.repository }}"
+                  echo "🌐 Pages URL: ${{ steps.deployment.outputs.page_url }}"
+                  echo "🏗️ Build with auto-detected repository info"

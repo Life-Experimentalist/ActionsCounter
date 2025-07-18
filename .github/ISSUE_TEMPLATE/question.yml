@@ -1,0 +1,97 @@
+name: ❓ Question/Support
+description: Ask a question or get help with setup/configuration
+labels: ["question", "support"]
+assignees: ["VKrishna04"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              **Before asking a question**, please check:
+              - 📖 [Documentation](https://github.com/Life-Experimentalist/ActionsCounter/blob/main/docs/Home.md)
+              - ❓ [FAQ](https://github.com/Life-Experimentalist/ActionsCounter/blob/main/docs/faq.md)
+              - 🛠️ [Troubleshooting Guide](https://github.com/Life-Experimentalist/ActionsCounter/blob/main/docs/troubleshooting.md)
+              - 💬 [GitHub Discussions](https://github.com/Life-Experimentalist/ActionsCounter/discussions)
+
+              **Note**: For ongoing discussions and general questions, consider using [GitHub Discussions](https://github.com/Life-Experimentalist/ActionsCounter/discussions) instead of issues.
+
+    - type: checkboxes
+      id: checked
+      attributes:
+          label: I have checked the documentation
+          options:
+              - label: I have read the relevant documentation and still need help
+                required: true
+
+    - type: dropdown
+      id: category
+      attributes:
+          label: Question Category
+          description: What type of help do you need?
+          options:
+              - "Setup and Installation"
+              - "Configuration"
+              - "Storage Modes"
+              - "Frontend Integration"
+              - "GitHub Actions/Workflows"
+              - "Troubleshooting"
+              - "Best Practices"
+              - "Other"
+      validations:
+          required: true
+
+    - type: textarea
+      id: question
+      attributes:
+          label: Your Question
+          description: What would you like to know?
+          placeholder: "Please describe your question in detail..."
+      validations:
+          required: true
+
+    - type: textarea
+      id: context
+      attributes:
+          label: Context and Setup
+          description: |
+              Please provide context about your setup:
+              - Storage mode you're using or planning to use
+              - Repository type (public/private)
+              - What you've already tried
+              - Your specific use case
+          placeholder: |
+              - Storage Mode: [Variables/Database/Repository]
+              - Repository: [Public/Private]
+              - Current setup status: [Not started/Partially configured/Configured but not working]
+              - What I've tried: [Steps you've already taken]
+      validations:
+          required: false
+
+    - type: textarea
+      id: goal
+      attributes:
+          label: What are you trying to achieve?
+          description: Describe your end goal or what you're trying to accomplish.
+          placeholder: "I want to..."
+      validations:
+          required: false
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Additional Information
+          description: Any other relevant information, error messages, or screenshots.
+          placeholder: |
+              - Error messages (if any)
+              - Screenshots (if helpful)
+              - Links to your repository (if public)
+              - Any other relevant details
+      validations:
+          required: false
+
+    - type: markdown
+      attributes:
+          value: |
+              ---
+              **💡 Tip**: For faster responses, provide as much context as possible about your setup and what you've already tried.
+
+              **🤝 Community**: Consider asking in [GitHub Discussions](https://github.com/Life-Experimentalist/ActionsCounter/discussions) where the community can also help!

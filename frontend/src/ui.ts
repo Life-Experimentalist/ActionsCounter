@@ -598,8 +598,10 @@ export class UI {
 
 	public showUpdateForm(projectName: string): void {
 		// Implementation for update form - would need additional modal
-		// TODO: Implement update functionality for project: ${projectName}
-		this.showMessage("Update functionality coming soon!", "info");
+		this.showMessage(
+			`Update functionality for "${projectName}" coming soon!`,
+			"info"
+		);
 	}
 
 	private async refreshData(): Promise<void> {

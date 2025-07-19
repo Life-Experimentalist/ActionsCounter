@@ -29,7 +29,7 @@ on:
                       - get: Get details for a specific project
                       - set: Edit any detail of a project (name, description, url, count, etc.) including renaming the project
                 required: true
-                default: "increment"
+                default: "add"
                 type: choice
                 options:
                     - increment
@@ -123,15 +123,18 @@ jobs:
                     -H "Accept: application/vnd.github+json" \
                     "https://api.github.com/repos/${{ github.repository }}/actions/variables/STORAGE_MODE" || echo "")
 
-                  if echo "$response" | grep -q '"value"'; then
-                    STORAGE_MODE=$(echo "$response" | grep -o '"value":"[^"]*"' | cut -d'"' -f4)
-                    echo "📊 Storage mode from repository variables: $STORAGE_MODE"
-                  else
-                    if [ -z "$STORAGE_MODE" ]; then
-                      STORAGE_MODE="1"
-                    fi
-                    echo "📊 Storage mode from fallback: $STORAGE_MODE"
+                  # Print the raw response for debugging
+                  echo "Raw STORAGE_MODE response: $response"
 
+                  if echo "$response" | grep -q '"value"'; then
+                    # Use jq for robust extraction
+                    STORAGE_MODE=$(echo "$response" | jq -r '.value // empty')
+                    echo "📊 Storage mode from repository variables: $STORAGE_MODE"
+                  fi
+
+                  if [ -z "$STORAGE_MODE" ]; then
+                    STORAGE_MODE="1"
+                    echo "📊 Storage mode from fallback: $STORAGE_MODE"
                     # Create repository variable if it doesn't exist
                     if [ -n "$STORAGE_MODE" ]; then
                       curl -X POST \
@@ -162,6 +165,8 @@ jobs:
                       echo "🔗 Using GITHUB VARIABLES storage mode (default)"
                       ;;
                   esac
+
+              # NOTE: When entering secrets or variables in the GitHub UI, do NOT use double quotes. Enter the value as plain text (e.g., 2 not "2"). Quotes are not required and will be treated as part of the value.
 
             - name: Validate authentication
               run: |

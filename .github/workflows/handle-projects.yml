@@ -268,12 +268,19 @@ jobs:
             - name: Database - Debug DB Secrets
               if: steps.mode.outputs.mode == 'database'
               run: |
-                  echo "DB_HOST=${{ secrets.DB_HOST }}"
-                  echo "DB_PORT=${{ secrets.DB_PORT }}"
-                  echo "DB_USER=${{ secrets.DB_USER }}"
-                  echo "DB_PASS=${{ secrets.DB_PASS }}"
-                  echo "DB_NAME=${{ secrets.DB_NAME }}"
-                  echo "DB_SCHEMA=${{ secrets.DB_SCHEMA }}"
+                  export DB_HOST="${{ secrets.DB_HOST }}"
+                  export DB_PORT="${{ secrets.DB_PORT }}"
+                  export DB_USER="${{ secrets.DB_USER }}"
+                  export DB_PASS="${{ secrets.DB_PASS }}"
+                  export DB_NAME="${{ secrets.DB_NAME }}"
+                  export DB_SCHEMA="${{ secrets.DB_SCHEMA }}"
+
+                  echo "DB_HOST=$DB_HOST"
+                  echo "DB_PORT=$DB_PORT"
+                  echo "DB_USER=$DB_USER"
+                  echo "DB_PASS=$DB_PASS"
+                  echo "DB_NAME=$DB_NAME"
+                  echo "DB_SCHEMA=$DB_SCHEMA"
                   # Check for missing secrets
                   missing=0
                   for var in DB_HOST DB_PORT DB_USER DB_PASS DB_NAME DB_SCHEMA; do

@@ -127,7 +127,9 @@ jobs:
                     STORAGE_MODE=$(echo "$response" | grep -o '"value":"[^"]*"' | cut -d'"' -f4)
                     echo "📊 Storage mode from repository variables: $STORAGE_MODE"
                   else
-                    STORAGE_MODE="${{ vars.STORAGE_MODE || '1' }}"
+                    if [ -z "$STORAGE_MODE" ]; then
+                      STORAGE_MODE="1"
+                    fi
                     echo "📊 Storage mode from fallback: $STORAGE_MODE"
 
                     # Create repository variable if it doesn't exist
@@ -840,8 +842,16 @@ jobs:
                     if echo "$response" | grep -q '"value"'; then
                       ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
                       PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
-                      echo "Showing up to 20 most recently updated projects:"
-                      echo "$PROJECTS_JSON" | jq '.projects | to_entries | sort_by(-.value.updated_at) | .[:20] | map({name: .key} + .value)' || echo "⚠️ No projects found or invalid JSON."
+                      echo "Raw projects object (for debugging):"
+                      echo "$PROJECTS_JSON" | jq '.projects'
+                      echo "Showing up to 20 most recently updated projects (if available):"
+                      SORTED=$(echo "$PROJECTS_JSON" | jq '.projects | to_entries | sort_by(-.value.updated_at) | .[:20] | map({name: .key} + .value)')
+                      if [ "$SORTED" = "null" ] || [ "$SORTED" = "[]" ]; then
+                        echo "No projects with updated_at found or invalid sort. Showing first 20 projects as-is:"
+                        echo "$PROJECTS_JSON" | jq '.projects | to_entries | .[:20] | map({name: .key} + .value)'
+                      else
+                        echo "$SORTED"
+                      fi
                     else
                       echo "❌ PROJECTS_DATA variable is empty or not found."
                     fi

@@ -1,4 +1,4 @@
-name: 🚀 Deploy GitHub Pages with Auto-Detection
+name: Deploy Frontend Interface
 
 on:
     push:

@@ -716,9 +716,7 @@ jobs:
                     echo "Please use database mode (STORAGE_MODE=2) or GitHub variables mode (STORAGE_MODE=1)"
                   fi
 
-            # SHARED ANALYTICS GENERATION
-            - name: Generate Analytics
-              run: |
+
                   case "${{ steps.mode.outputs.mode }}" in
                     "database")
                       # Database analytics

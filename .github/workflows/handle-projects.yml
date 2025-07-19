@@ -265,6 +265,29 @@ jobs:
                   sudo apt-get install -y postgresql-client
                   echo "✅ PostgreSQL client installed"
 
+            - name: Database - Debug DB Secrets
+              if: steps.mode.outputs.mode == 'database'
+              run: |
+                  echo "DB_HOST=${{ secrets.DB_HOST }}"
+                  echo "DB_PORT=${{ secrets.DB_PORT }}"
+                  echo "DB_USER=${{ secrets.DB_USER }}"
+                  echo "DB_PASS=${{ secrets.DB_PASS }}"
+                  echo "DB_NAME=${{ secrets.DB_NAME }}"
+                  echo "DB_SCHEMA=${{ secrets.DB_SCHEMA }}"
+                  # Check for missing secrets
+                  missing=0
+                  for var in DB_HOST DB_PORT DB_USER DB_PASS DB_NAME DB_SCHEMA; do
+                    value="$(eval echo \$$var)"
+                    if [ -z "$value" ] || [ "$value" = "***" ]; then
+                      echo "❌ $var is missing or not set!"
+                      missing=1
+                    fi
+                  done
+                  if [ "$missing" = "1" ]; then
+                    echo "❌ One or more DB secrets are missing. Aborting."
+                    exit 1
+                  fi
+
             - name: Database - Initialize Schema
               if: steps.mode.outputs.mode == 'database'
               run: |
@@ -531,10 +554,15 @@ jobs:
                         echo "❌ Project name is required for add action"
                         exit 1
                       fi
-
                       PROJECT_NAME="${{ github.event.inputs.project_name }}"
                       DESCRIPTION="${{ github.event.inputs.description }}"
                       URL="${{ github.event.inputs.url }}"
+
+                      # Check if project already exists
+                      if echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
+                        echo "⚠️ Project '$PROJECT_NAME' already exists. Skipping add."
+                        exit 0
+                      fi
 
                       # Generate random alias and auth_token
                       ALIAS="proj_$(openssl rand -hex 8)"

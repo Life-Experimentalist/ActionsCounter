@@ -3,11 +3,7 @@
  * Beautiful, responsive interface with enhanced user experience
  */
 
-import {
-	ActionsCounter,
-	type Project,
-	type ProjectData,
-} from "./counter-api.js";
+import { ActionsCounter, type Project } from "./counter-api.js";
 
 export class UI {
 	private api: ActionsCounter;

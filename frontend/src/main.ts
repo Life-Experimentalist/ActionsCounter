@@ -4,15 +4,15 @@
  */
 
 // Load environment variables for local development
-if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
-	try {
-		const { config } = await import('dotenv');
-		config();
-		console.log('📄 Loaded environment variables from .env');
-	} catch (dotenvError) {
-		console.log('ℹ️ No dotenv configuration found, using build-time injection');
-	}
-}
+// if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') {
+// 	try {
+// 		const { config } = await import('dotenv');
+// 		config();
+// 		console.log('📄 Loaded environment variables from .env');
+// 	} catch (dotenvError) {
+// 		console.log('ℹ️ No dotenv configuration found, using build-time injection');
+// 	}
+// }
 
 import { UI } from "./ui.js";
 

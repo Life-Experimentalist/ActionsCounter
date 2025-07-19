@@ -1,12 +1,12 @@
 /**
- * Simplified UI for ActionsCounter
- * Focuses on core project management with security via repository secrets
+ * Modern UI for ActionsCounter Dashboard
+ * Beautiful, responsive interface with enhanced user experience
  */
 
 import {
 	ActionsCounter,
 	type Project,
-	type WebhookInfo,
+	type ProjectData,
 } from "./counter-api.js";
 
 export class UI {
@@ -27,785 +27,932 @@ export class UI {
 	}
 
 	/**
-	 * Enhanced utility function to create DOM elements with optional class and text content
+	 * Initialize the modern UI
 	 */
-	private createElement(
-		tag: string,
-		className?: string,
-		textContent?: string
-	): HTMLElement {
-		const element = document.createElement(tag);
-		if (className) element.className = className;
-		if (textContent) element.textContent = textContent;
-		return element;
-	}
-
-	/**
-	 * Enhanced utility function to create and append child elements
-	 */
-	private createAndAppend(
-		parent: HTMLElement,
-		tag: string,
-		className?: string,
-		textContent?: string
-	): HTMLElement {
-		const element = this.createElement(tag, className, textContent);
-		parent.appendChild(element);
-		return element;
-	}
-
-	/**
-	 * Enhanced modal creation with animations and improved styling
-	 */
-	private createModal(
-		title: string,
-		width: string = "600px"
-	): {
-		modal: HTMLElement;
-		header: HTMLElement;
-		body: HTMLElement;
-		close: () => void;
-	} {
-		const modal = this.createElement("div", "modal-overlay");
-		const modalContent = this.createAndAppend(modal, "div", "modal");
-		modalContent.style.maxWidth = width;
-
-		// Create header
-		const header = this.createAndAppend(
-			modalContent,
-			"div",
-			"modal-header"
-		);
-		this.createAndAppend(header, "h3", undefined, title);
-
-		const closeBtn = this.createElement(
-			"button",
-			"close-btn",
-			"×"
-		) as HTMLButtonElement;
-		header.appendChild(closeBtn);
-
-		// Create body
-		const body = this.createAndAppend(modalContent, "div", "modal-body");
-
-		// Enhanced close functionality with animations
-		const close = () => {
-			modal.classList.remove("show");
-			setTimeout(() => {
-				if (modal.parentNode) {
-					modal.parentNode.removeChild(modal);
-				}
-			}, 300); // Match CSS transition duration
-		};
-
-		// Event handlers
-		closeBtn.onclick = close;
-		modal.addEventListener("click", (e) => {
-			if (e.target === modal) {
-				close();
-			}
-		});
-
-		// ESC key support
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				close();
-				document.removeEventListener("keydown", handleKeyDown);
-			}
-		};
-		document.addEventListener("keydown", handleKeyDown);
-
-		// Show modal with animation
-		document.body.appendChild(modal);
-		requestAnimationFrame(() => {
-			modal.classList.add("show");
-		});
-
-		return { modal, header, body, close };
-	}
-
 	private async init(): Promise<void> {
+		this.setupStorageIndicator();
 		this.setupEventListeners();
-		await this.loadProjects();
-		this.displayStorageMode();
+		await this.refreshData();
 	}
 
-	private displayStorageMode(): void {
-		// Add storage mode indicator to the header
-		const header = document.querySelector(
-			"header .container"
-		) as HTMLElement;
-		if (header && !document.getElementById("storage-mode-indicator")) {
-			const indicator = this.createElement("div");
-			indicator.id = "storage-mode-indicator";
-			indicator.style.cssText = `
-				position: absolute;
-				top: 10px;
-				right: 10px;
-				padding: 5px 10px;
-				border-radius: 15px;
-				font-size: 12px;
-				font-weight: bold;
-				color: white;
-				z-index: 1000;
-			`;
+	/**
+	 * Setup storage mode indicator
+	 */
+	private setupStorageIndicator(): void {
+		const indicator = document.getElementById("storage-indicator");
+		const modeText = document.getElementById("storage-mode-text");
 
-			// Set mode-specific styling and text
+		if (indicator && modeText) {
+			let modeLabel =
+				this.storageMode.charAt(0).toUpperCase() +
+				this.storageMode.slice(1) +
+				" Storage";
+			let modeDesc = "";
 			switch (this.storageMode) {
 				case "github_variables":
-					indicator.style.backgroundColor = "#0066cc";
-					indicator.innerHTML = "🔗 GitHub Variables Mode";
+					modeDesc =
+						"(Fast, free, no DB required. Data stored in GitHub repo variables.)";
 					break;
 				case "database":
-					indicator.style.backgroundColor = "#28a745";
-					indicator.innerHTML = "🗄️ Database Mode";
+					modeDesc =
+						"(External DB, scalable, requires DB connection.)";
 					break;
 				case "repository_commits":
-					indicator.style.backgroundColor = "#fd7e14";
-					indicator.innerHTML = "📁 Repository Commits Mode";
+					modeDesc =
+						"(Data stored in repo commits/files. Good for audit/history.)";
 					break;
 				default:
-					indicator.style.backgroundColor = "#6c757d";
-					indicator.innerHTML = "❓ Unknown Mode";
+					modeDesc = "(Unknown or not configured)";
 			}
-
-			header.appendChild(indicator);
-		}
-
-		// Add analytics display if available
-		if (
-			this.analyticsData &&
-			!document.getElementById("analytics-display")
-		) {
-			this.displayAnalytics();
+			modeText.textContent = `${modeLabel} ${modeDesc}`;
+			indicator.classList.remove("hidden");
 		}
 	}
 
-	private displayAnalytics(): void {
-		if (!this.analyticsData) return;
-
-		// Update stats section if it exists
-		const statsSection = document.querySelector(".analytics-section");
-		if (statsSection) {
-			// Clear existing content
-			statsSection.innerHTML = "";
-
-			// Create title
-			const title = document.createElement("h3");
-			title.textContent = `📊 Analytics (${this.storageMode.toUpperCase()} Mode)`;
-			statsSection.appendChild(title);
-
-			// Create stats grid
-			const statsGrid = document.createElement("div");
-			statsGrid.className = "stats-grid";
-
-			const analyticsStats = [
-				{
-					title: "Total Projects",
-					value: this.analyticsData.total_projects || 0,
-				},
-				{
-					title: "Total Count",
-					value: this.analyticsData.total_count || 0,
-				},
-				{
-					title: "Average Count",
-					value: this.analyticsData.average_count || 0,
-				},
-				{
-					title: "Max Count",
-					value: this.analyticsData.max_count || 0,
-				},
-			];
-
-			analyticsStats.forEach((stat) => {
-				const statCard = document.createElement("div");
-				statCard.className = "stat-card";
-
-				const statTitle = document.createElement("h4");
-				statTitle.textContent = stat.title;
-
-				const statValue = document.createElement("span");
-				statValue.className = "stat-value";
-				statValue.textContent = String(stat.value);
-
-				statCard.appendChild(statTitle);
-				statCard.appendChild(statValue);
-				statsGrid.appendChild(statCard);
-			});
-
-			statsSection.appendChild(statsGrid);
-
-			// Add last updated
-			const lastUpdated = document.createElement("p");
-			lastUpdated.className = "last-updated";
-			lastUpdated.textContent = `Last Updated: ${new Date(
-				this.analyticsData.last_updated
-			).toLocaleString()}`;
-			statsSection.appendChild(lastUpdated);
-		}
-	}
-
+	/**
+	 * Setup event listeners
+	 */
 	private setupEventListeners(): void {
-		// Navigation
-		document.querySelectorAll(".nav-btn").forEach((btn) => {
-			btn.addEventListener("click", (e) => {
-				const target = (e.target as HTMLElement).dataset.target;
-				if (target) this.showSection(target);
+		// Search functionality
+		const searchInput = document.getElementById(
+			"search-input"
+		) as HTMLInputElement;
+		if (searchInput) {
+			searchInput.addEventListener("input", () => this.searchProjects());
+			searchInput.addEventListener("keypress", (e) => {
+				if (e.key === "Enter") {
+					this.searchProjects();
+				}
 			});
+		}
+
+		// ESC key to close modals
+		document.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") {
+				this.closeModal();
+			}
 		});
-
-		// Project management forms
-		const addForm = document.getElementById(
-			"add-project-form"
-		) as HTMLFormElement;
-		if (addForm) {
-			addForm.addEventListener("submit", (e) => this.handleAddProject(e));
-		}
-
-		const pingForm = document.getElementById(
-			"ping-project-form"
-		) as HTMLFormElement;
-		if (pingForm) {
-			pingForm.addEventListener("submit", (e) =>
-				this.handlePingProject(e)
-			);
-		}
-
-		// Refresh button
-		const refreshBtn = document.getElementById("refresh-btn");
-		if (refreshBtn) {
-			refreshBtn.addEventListener("click", () => this.refreshData());
-		}
 	}
 
-	private showSection(sectionId: string): void {
-		// Hide all sections
-		document.querySelectorAll(".section").forEach((section) => {
-			section.classList.add("hidden");
-		});
-
-		// Show target section
-		const targetSection = document.getElementById(sectionId);
-		if (targetSection) {
-			targetSection.classList.remove("hidden");
-		}
-
-		// Update navigation
-		document.querySelectorAll(".nav-btn").forEach((btn) => {
-			btn.classList.remove("active");
-		});
-		document
-			.querySelector(`[data-target="${sectionId}"]`)
-			?.classList.add("active");
-	}
-
-	private async loadProjects(): Promise<void> {
+	/**
+	 * Refresh data and update UI
+	 */
+	public async refreshData(): Promise<void> {
 		try {
-			this.showMessage("Loading projects...", "info");
-			const data = await this.api.loadProjects(true);
-			this.displayProjects(Object.values(data.projects));
-			this.displayStats(await this.api.getStats());
-			this.hideMessage();
+			this.showMessage("Refreshing data...", "info");
+
+			const projectsData = await this.api.loadProjects(true);
+			this.projectsData = Object.values(projectsData.projects);
+
+			this.renderProjects(this.projectsData);
+			this.updateStats(this.projectsData);
+
+			this.showMessage("Data refreshed successfully!", "success");
 		} catch (error) {
-			this.showMessage(`Error loading projects: ${error}`, "error");
+			console.error("Error refreshing data:", error);
+			this.showMessage(`Error refreshing data: ${error}`, "error");
 		}
-	}
-
-	private displayProjects(projects: Project[]): void {
-		const container = document.getElementById("projects-list");
-		if (!container) return;
-
-		if (projects.length === 0) {
-			container.innerHTML =
-				'<p class="no-projects">No projects found. Add your first project!</p>';
-			return;
-		}
-
-		// Clear container safely
-		container.innerHTML = "";
-
-		// Create projects using utility methods
-		projects.forEach((project) => {
-			const projectCard = this.createElement("div", "project-card");
-
-			const projectHeader = this.createAndAppend(
-				projectCard,
-				"div",
-				"project-header"
-			);
-			this.createAndAppend(projectHeader, "h3", undefined, project.name);
-			this.createAndAppend(
-				projectHeader,
-				"span",
-				"ping-count",
-				`${project.count} pings`
-			);
-
-			this.createAndAppend(
-				projectCard,
-				"p",
-				"project-description",
-				project.description || ""
-			);
-
-			const projectMeta = this.createAndAppend(
-				projectCard,
-				"div",
-				"project-meta"
-			);
-			this.createAndAppend(
-				projectMeta,
-				"span",
-				undefined,
-				`Created: ${this.formatDate(project.created)}`
-			);
-			this.createAndAppend(
-				projectMeta,
-				"span",
-				undefined,
-				`Last ping: ${this.formatDate(project.last_ping)}`
-			);
-
-			const projectActions = this.createAndAppend(
-				projectCard,
-				"div",
-				"project-actions"
-			);
-
-			// Create action buttons
-			const webhookBtn = this.createElement(
-				"button",
-				"btn-secondary",
-				"Get Webhook"
-			) as HTMLButtonElement;
-			webhookBtn.onclick = () => this.generateWebhook(project.name);
-
-			const editBtn = this.createElement(
-				"button",
-				"btn-secondary",
-				"Edit"
-			) as HTMLButtonElement;
-			editBtn.onclick = () => this.showUpdateForm(project.name);
-
-			const deleteBtn = this.createElement(
-				"button",
-				"btn-danger",
-				"Delete"
-			) as HTMLButtonElement;
-			deleteBtn.onclick = () => this.deleteProject(project.name);
-
-			projectActions.appendChild(webhookBtn);
-			projectActions.appendChild(editBtn);
-			projectActions.appendChild(deleteBtn);
-
-			// Add project URL link if available
-			if (project.project_url) {
-				const projectLink = this.createElement(
-					"a",
-					"project-url",
-					"View Project"
-				) as HTMLAnchorElement;
-				projectLink.href = project.project_url;
-				projectLink.target = "_blank";
-				projectCard.appendChild(projectLink);
-			}
-
-			container.appendChild(projectCard);
-		});
-	}
-
-	private displayStats(stats: any): void {
-		const statsContainer = document.getElementById("stats-container");
-		if (!statsContainer) return;
-
-		// Clear container safely
-		statsContainer.innerHTML = "";
-
-		// Create stats cards using safe DOM methods
-		const statsData = [
-			{
-				title: "Total Projects",
-				value: String(stats.totalProjects || 0),
-			},
-			{ title: "Total Pings", value: String(stats.totalPings || 0) },
-			{ title: "Most Active", value: String(stats.mostActive || "None") },
-			{
-				title: "Last Updated",
-				value: this.formatDate(stats.lastUpdated),
-			},
-		];
-
-		statsData.forEach((statItem) => {
-			const statCard = document.createElement("div");
-			statCard.className = "stat-card";
-
-			const title = document.createElement("h3");
-			title.textContent = statItem.title;
-
-			const value = document.createElement("div");
-			value.className = "stat-value";
-			value.textContent = statItem.value;
-
-			statCard.appendChild(title);
-			statCard.appendChild(value);
-			statsContainer.appendChild(statCard);
-		});
 	}
 
 	/**
-	 * Redirect user to GitHub Actions for manual CRUD operations
+	 * Update dashboard statistics
 	 */
-	private redirectToGitHubActions(
-		action: string,
-		projectName?: string
-	): void {
-		const actionsUrl = `https://github.com/${this.api.getRepoOwner()}/${this.api.getRepoName()}/actions/workflows/handle-projects-dual.yml`;
+	private updateStats(projects: Project[]): void {
+		const totalProjects = projects.length;
+		const totalCount = projects.reduce((sum, p) => sum + p.count, 0);
+		const averageCount =
+			totalProjects > 0 ? Math.round(totalCount / totalProjects) : 0;
+		const mostActive =
+			projects.length > 0
+				? projects.reduce(
+						(max, p) => (p.count > max.count ? p : max),
+						projects[0]
+				  )
+				: null;
 
-		// Store operation details in localStorage for user reference
-		const operationDetails = {
-			action,
-			projectName: projectName || "",
-			timestamp: new Date().toISOString(),
-		};
-		localStorage.setItem(
-			"pendingOperation",
-			JSON.stringify(operationDetails)
-		);
-
-		// Show instructions modal
-		this.showActionInstructions(action, projectName, actionsUrl);
+		// Update stat cards
+		this.updateElement("total-projects", totalProjects.toString());
+		this.updateElement("total-count", totalCount.toLocaleString());
+		this.updateElement("average-count", averageCount.toString());
+		this.updateElement("most-active", mostActive ? mostActive.name : "—");
 	}
 
 	/**
-	 * Enhanced show instructions for GitHub Actions operations with better styling
+	 * Update element text content
 	 */
-	private showActionInstructions(
-		action: string,
-		projectName: string | undefined,
-		actionsUrl: string
-	): void {
-		const { body, close } = this.createModal(
-			`${action} Project - GitHub Actions`,
-			"600px"
-		);
-
-		const instructions = this.createAndAppend(body, "div", "");
-		instructions.innerHTML = `
-			<p><strong>To ${action.toLowerCase()} ${
-			projectName ? `"${projectName}"` : "a project"
-		}, follow these steps:</strong></p>
-			<ol style="text-align: left; margin: 15px 0; padding-left: 20px;">
-				<li style="margin-bottom: 8px;">Click "Go to GitHub Actions" below</li>
-				<li style="margin-bottom: 8px;">Click the "Run workflow" button</li>
-				<li style="margin-bottom: 8px;">Select action: "<strong>${action}</strong>"</li>
-				${
-					projectName
-						? `<li style="margin-bottom: 8px;">Enter project name: "<strong>${projectName}</strong>"</li>`
-						: '<li style="margin-bottom: 8px;">Enter the project name</li>'
-				}
-				<li style="margin-bottom: 8px;">Enter your admin password (from repository secrets)</li>
-				<li style="margin-bottom: 8px;">Click "Run workflow"</li>
-			</ol>
-			<div style="background: #e0f2fe; border: 1px solid #0288d1; border-radius: 8px; padding: 12px; margin: 15px 0;">
-				<p style="margin: 0; color: #01579b; font-size: 14px;"><strong>🔐 Security:</strong> The operation will be performed securely using your repository secrets.</p>
-			</div>
-		`;
-
-		const buttonContainer = this.createAndAppend(
-			body,
-			"div",
-			"modal-actions"
-		);
-
-		const cancelBtn = this.createAndAppend(
-			buttonContainer,
-			"button",
-			"btn btn-secondary",
-			"Cancel"
-		) as HTMLButtonElement;
-		const actionBtn = this.createAndAppend(
-			buttonContainer,
-			"button",
-			"btn btn-primary",
-			"Go to GitHub Actions"
-		) as HTMLButtonElement;
-
-		// Event handlers
-		cancelBtn.addEventListener("click", close);
-
-		actionBtn.addEventListener("click", () => {
-			window.open(actionsUrl, "_blank");
-			close();
-		});
-	}
-
-	private async handleAddProject(e: Event): Promise<void> {
-		e.preventDefault();
-
-		const form = e.target as HTMLFormElement;
-		const formData = new FormData(form);
-
-		const name = formData.get("name") as string;
-
-		if (!name.trim()) {
-			this.showMessage("Project name is required.", "error");
-			return;
+	private updateElement(id: string, content: string): void {
+		const element = document.getElementById(id);
+		if (element) {
+			element.textContent = content;
 		}
-
-		// Redirect to GitHub Actions for secure operation
-		this.redirectToGitHubActions("add", name);
-		form.reset();
 	}
 
-	private async handlePingProject(e: Event): Promise<void> {
-		e.preventDefault();
-
-		const form = e.target as HTMLFormElement;
-		const formData = new FormData(form);
-
-		const name = formData.get("project-name") as string;
-
-		if (!name.trim()) {
-			this.showMessage("Project name is required.", "error");
-			return;
-		}
-
-		// Redirect to GitHub Actions for secure operation
-		this.redirectToGitHubActions("ping", name);
-		form.reset();
-	}
-
-	public async deleteProject(projectName: string): Promise<void> {
-		if (!confirm(`Are you sure you want to delete "${projectName}"?`)) {
-			return;
-		}
-
-		// Redirect to GitHub Actions for secure operation
-		this.redirectToGitHubActions("remove", projectName);
-	}
-
-	public generateWebhook(projectName: string): void {
-		const webhookInfo = this.api.generateWebhookInfo(projectName);
-		this.showWebhookModal(webhookInfo);
-	}
-
-	private showWebhookModal(webhookInfo: WebhookInfo): void {
-		const { body, close } = this.createModal(
-			"🔗 Webhook Information",
-			"700px"
-		);
-
-		// Description
-		const description = this.createAndAppend(
-			body,
-			"p",
-			undefined,
-			webhookInfo.description
-		);
-		description.style.marginBottom = "24px";
-		description.style.padding = "16px";
-		description.style.backgroundColor = "#f0f9ff";
-		description.style.border = "1px solid #0ea5e9";
-		description.style.borderRadius = "8px";
-		description.style.color = "#0c4a6e";
-
-		// Create webhook fields safely using utility function
-		const createField = (
-			label: string,
-			value: string,
-			showCopy = false
-		) => {
-			const field = this.createElement("div", "webhook-field");
-			field.style.marginBottom = "20px";
-
-			const labelElement = this.createAndAppend(
-				field,
-				"label",
-				undefined,
-				label + ":"
-			);
-			labelElement.style.fontWeight = "600";
-			labelElement.style.marginBottom = "8px";
-			labelElement.style.display = "block";
-			labelElement.style.color = "var(--primary-color)";
-
-			const inputContainer = this.createElement("div");
-			inputContainer.style.display = "flex";
-			inputContainer.style.alignItems = "stretch";
-			inputContainer.style.gap = "8px";
-
-			const input = document.createElement(
-				label === "Headers" || label === "Body" ? "textarea" : "input"
-			);
-			input.setAttribute("readonly", "true");
-			input.style.fontFamily =
-				"'Monaco', 'Menlo', 'Ubuntu Mono', monospace";
-			input.style.fontSize = "13px";
-			input.style.flex = "1";
-			input.style.border = "2px solid var(--border-color)";
-			input.style.borderRadius = "6px";
-			input.style.padding = "12px";
-			input.style.backgroundColor = "#f8fafc";
-
-			if (input instanceof HTMLInputElement) {
-				input.value = value;
-			} else {
-				input.textContent = value;
-				(input as HTMLTextAreaElement).rows = 4;
-			}
-			inputContainer.appendChild(input);
-
-			if (showCopy) {
-				const copyBtn = this.createElement(
-					"button",
-					"btn btn-primary",
-					"📋 Copy"
-				) as HTMLButtonElement;
-				copyBtn.style.minWidth = "80px";
-				copyBtn.onclick = () => {
-					navigator.clipboard.writeText(value).then(() => {
-						const originalText = copyBtn.textContent;
-						copyBtn.textContent = "✅ Copied!";
-						copyBtn.style.backgroundColor = "var(--success-color)";
-						setTimeout(() => {
-							copyBtn.textContent = originalText;
-							copyBtn.style.backgroundColor = "";
-						}, 2000);
-					});
-				};
-				inputContainer.appendChild(copyBtn);
-			}
-
-			field.appendChild(inputContainer);
-			return field;
-		};
-
-		// Create fields
-		body.appendChild(createField("URL", webhookInfo.url, true));
-		body.appendChild(createField("Method", webhookInfo.method));
-		body.appendChild(
-			createField(
-				"Headers",
-				JSON.stringify(webhookInfo.headers, null, 2),
-				true
-			)
-		);
-		body.appendChild(createField("Body", webhookInfo.body, true));
-
-		// Action buttons
-		const actions = this.createAndAppend(body, "div", "modal-actions");
-		const closeBtn = this.createAndAppend(
-			actions,
-			"button",
-			"btn btn-secondary",
-			"Close"
-		) as HTMLButtonElement;
-		const testBtn = this.createAndAppend(
-			actions,
-			"button",
-			"btn btn-primary",
-			"🧪 Test Webhook"
-		) as HTMLButtonElement;
-
-		closeBtn.onclick = close;
-		testBtn.onclick = () => {
-			this.testWebhook(webhookInfo);
-		};
-	}
-
-	private testWebhook(webhookInfo: WebhookInfo): void {
-		const { body, close } = this.createModal("🧪 Testing Webhook", "500px");
-
-		const status = this.createAndAppend(
-			body,
-			"div",
-			undefined,
-			"🔄 Sending test request..."
-		);
-		status.style.padding = "16px";
-		status.style.textAlign = "center";
-		status.style.marginBottom = "20px";
-
-		// Send test request
-		fetch(webhookInfo.url, {
-			method: webhookInfo.method,
-			headers: webhookInfo.headers,
-			body: webhookInfo.body,
-		})
-			.then((response) => {
-				if (response.ok) {
-					status.innerHTML = `
-					<div style="color: var(--success-color); font-weight: 600;">
-						✅ Webhook test successful!
-					</div>
-					<div style="font-size: 14px; margin-top: 8px; color: #6b7280;">
-						Response: ${response.status} ${response.statusText}
-					</div>
-				`;
-				} else {
-					status.innerHTML = `
-					<div style="color: var(--error-color); font-weight: 600;">
-						❌ Webhook test failed
-					</div>
-					<div style="font-size: 14px; margin-top: 8px; color: #6b7280;">
-						Response: ${response.status} ${response.statusText}
-					</div>
-				`;
-				}
-			})
-			.catch((error) => {
-				status.innerHTML = `
-				<div style="color: var(--error-color); font-weight: 600;">
-					❌ Network error
-				</div>
-				<div style="font-size: 14px; margin-top: 8px; color: #6b7280;">
-					${error.message}
-				</div>
-			`;
-			});
-
-		const actions = this.createAndAppend(body, "div", "modal-actions");
-		const closeBtn = this.createAndAppend(
-			actions,
-			"button",
-			"btn btn-primary",
-			"Close"
-		) as HTMLButtonElement;
-		closeBtn.onclick = close;
-	}
-
-	public showUpdateForm(projectName: string): void {
-		// Redirect to GitHub Actions for secure operation
-		this.redirectToGitHubActions("update", projectName);
-	}
-
-	private async refreshData(): Promise<void> {
-		this.api.refresh();
-		await this.loadProjects();
-	}
-
-	private showMessage(
+	/**
+	 * Show message to user
+	 */
+	public showMessage(
 		message: string,
 		type: "success" | "error" | "info"
 	): void {
 		const container = document.getElementById("message-container");
 		if (!container) return;
 
-		container.innerHTML = `<div class="message ${type}">${message}</div>`;
+		// Clear existing messages
+		container.innerHTML = "";
+
+		// Create message element
+		const messageEl = document.createElement("div");
+		messageEl.className = `message ${type}`;
+		messageEl.innerHTML = `
+			<i class="fas ${
+				type === "success"
+					? "fa-check-circle"
+					: type === "error"
+					? "fa-exclamation-circle"
+					: "fa-info-circle"
+			}"></i>
+			${message}
+		`;
+
+		container.appendChild(messageEl);
 		container.classList.remove("hidden");
+
+		// Auto hide after 5 seconds
+		setTimeout(() => {
+			container.classList.add("hidden");
+		}, 5000);
 	}
 
-	private hideMessage(): void {
-		const container = document.getElementById("message-container");
-		if (container) {
-			container.classList.add("hidden");
+	/**
+	 * Render projects in the grid
+	 */
+	public renderProjects(projects: Project[]): void {
+		const container = document.getElementById("projects-container");
+		const emptyState = document.getElementById("empty-state");
+
+		if (!container || !emptyState) return;
+
+		if (projects.length === 0) {
+			container.innerHTML = "";
+			emptyState.classList.remove("hidden");
+			return;
+		}
+
+		emptyState.classList.add("hidden");
+
+		container.innerHTML = projects
+			.map(
+				(project) => `
+			<div class="project-card fade-in-up" onclick="ui.showProjectDetails('${this.escapeHtml(
+				project.name
+			)}')">
+				<div class="project-header">
+					<div>
+						<h3 class="project-name">${this.escapeHtml(project.name)}</h3>
+					</div>
+					<div class="project-count">${project.count.toLocaleString()}</div>
+				</div>
+
+				<div class="project-description">
+					${
+						project.description
+							? this.escapeHtml(project.description)
+							: "No description available"
+					}
+				</div>
+
+				<div class="project-meta">
+					<span><i class="fas fa-calendar"></i> Created: ${
+						project.created
+							? new Date(project.created).toLocaleDateString()
+							: "Unknown"
+					}</span>
+					<span><i class="fas fa-clock"></i> Updated: ${
+						project.last_ping
+							? new Date(project.last_ping).toLocaleDateString()
+							: "Unknown"
+					}</span>
+				</div>
+
+				<div class="project-actions">
+					<button class="btn btn-secondary btn-sm" onclick="ui.pingProject('${this.escapeHtml(
+						project.name
+					)}')">
+						<i class="fas fa-mouse-pointer"></i> Ping
+					</button>
+					<button class="btn btn-outline btn-sm" onclick="ui.showUpdateProjectModal('${this.escapeHtml(
+						project.name
+					)}')">
+						<i class="fas fa-edit"></i> Edit
+					</button>
+					<button class="btn btn-outline btn-sm" onclick="ui.showWebhookModal('${this.escapeHtml(
+						project.name
+					)}')">
+						<i class="fas fa-link"></i> Webhook
+					</button>
+					<button class="btn btn-outline btn-sm" onclick="ui.showDeleteConfirmation('${this.escapeHtml(
+						project.name
+					)}')">
+						<i class="fas fa-trash"></i> Delete
+					</button>
+				</div>
+			</div>
+		`
+			)
+			.join("");
+	}
+
+	/**
+	 * Escape HTML to prevent XSS
+	 */
+	private escapeHtml(text: string): string {
+		const div = document.createElement("div");
+		div.textContent = text;
+		return div.innerHTML;
+	}
+
+	/**
+	 * Search and filter projects
+	 */
+	public searchProjects(): void {
+		const searchInput = document.getElementById(
+			"search-input"
+		) as HTMLInputElement;
+		if (!searchInput) return;
+
+		const query = searchInput.value.toLowerCase().trim();
+
+		if (!query) {
+			this.renderProjects(this.projectsData);
+			return;
+		}
+
+		const filteredProjects = this.projectsData.filter(
+			(project) =>
+				project.name.toLowerCase().includes(query) ||
+				(project.description &&
+					project.description.toLowerCase().includes(query))
+		);
+
+		this.renderProjects(filteredProjects);
+	}
+
+	/**
+	 * Show add project modal
+	 */
+	public showAddProjectModal(): void {
+		const modal = this.createModal(
+			"Add New Project",
+			`
+			<form id="add-project-form">
+				<div class="form-group">
+					<label for="project-name">Project Name *</label>
+					<input type="text" id="project-name" name="name" required placeholder="Enter project name" />
+				</div>
+				<div class="form-group">
+					<label for="project-description">Description</label>
+					<textarea id="project-description" name="description" rows="3" placeholder="Optional project description"></textarea>
+				</div>
+				<div class="form-group">
+					<label for="initial-count">Initial Count</label>
+					<input type="number" id="initial-count" name="count" value="0" min="0" />
+				</div>
+				<div class="form-group">
+					<label for="admin-password">Admin Password *</label>
+					<input type="password" id="admin-password" name="password" required placeholder="Enter admin password" />
+				</div>
+			</form>
+		`,
+			[
+				{
+					text: "Cancel",
+					class: "btn btn-outline",
+					action: () => this.closeModal(),
+				},
+				{
+					text: "Add Project",
+					class: "btn btn-primary",
+					action: () => this.handleAddProject(),
+				},
+			]
+		);
+
+		this.showModal(modal);
+	}
+
+	/**
+	 * Handle add project form submission
+	 */
+	private async handleAddProject(): Promise<void> {
+		const form = document.getElementById(
+			"add-project-form"
+		) as HTMLFormElement;
+		if (!form) return;
+
+		const formData = new FormData(form);
+		const name = formData.get("name") as string;
+		const description = formData.get("description") as string;
+		const password = formData.get("password") as string;
+
+		if (!name.trim() || !password.trim()) {
+			this.showMessage("Please fill in all required fields", "error");
+			return;
+		}
+
+		try {
+			this.closeModal();
+			this.showMessage("Adding project...", "info");
+
+			// Call backend and expect alias/auth token in response (simulate for now)
+			await this.api.addProject(name, description, "", password);
+			// Simulate: show alias/auth token (in real use, backend should return these)
+			const { alias, authToken } = this.api.registerProject(name);
+			this.showMessage(
+				`Project "${name}" added!<br>🔑 Alias: <b>${alias}</b><br>🔐 Auth Token: <b>${authToken}</b><br><span style='color:var(--error);font-weight:600;'>Save this token now. It will not be shown again!</span>`,
+				"success"
+			);
+			await this.refreshData();
+		} catch (error) {
+			console.error("Error adding project:", error);
+			this.showMessage(`Error adding project: ${error}`, "error");
 		}
 	}
 
-	private formatDate(dateString: string): string {
-		return new Date(dateString).toLocaleString();
+	/**
+	 * Show ping project modal
+	 */
+	public showPingModal(): void {
+		const modal = this.createModal(
+			"Ping Project",
+			`
+			<form id="ping-project-form">
+				<div class="form-group">
+					<label for="ping-project-name">Project Name *</label>
+					<input type="text" id="ping-project-name" name="project-name" required placeholder="Enter project name to ping" />
+				</div>
+			</form>
+		`,
+			[
+				{
+					text: "Cancel",
+					class: "btn btn-outline",
+					action: () => this.closeModal(),
+				},
+				{
+					text: "Ping Project",
+					class: "btn btn-secondary",
+					action: () => this.handlePingProject(),
+				},
+			]
+		);
+
+		this.showModal(modal);
+	}
+
+	/**
+	 * Handle ping project form submission
+	 */
+	private async handlePingProject(): Promise<void> {
+		const form = document.getElementById(
+			"ping-project-form"
+		) as HTMLFormElement;
+		if (!form) return;
+
+		const formData = new FormData(form);
+		const projectName = formData.get("project-name") as string;
+
+		if (!projectName.trim()) {
+			this.showMessage("Please enter a project name", "error");
+			return;
+		}
+
+		try {
+			this.closeModal();
+			this.showMessage("Pinging project...", "info");
+
+			await this.api.pingProject(projectName);
+			this.showMessage(
+				`Project "${projectName}" pinged successfully!`,
+				"success"
+			);
+			await this.refreshData();
+		} catch (error) {
+			console.error("Error pinging project:", error);
+			this.showMessage(`Error pinging project: ${error}`, "error");
+		}
+	}
+
+	/**
+	 * Ping project directly (called from project card)
+	 */
+	public async pingProject(projectName: string): Promise<void> {
+		try {
+			this.showMessage("Pinging project...", "info");
+
+			await this.api.pingProject(projectName);
+			this.showMessage(
+				`Project "${projectName}" pinged successfully!`,
+				"success"
+			);
+			await this.refreshData();
+		} catch (error) {
+			console.error("Error pinging project:", error);
+			this.showMessage(`Error pinging project: ${error}`, "error");
+		}
+	}
+
+	/**
+	 * Show update project modal
+	 */
+	public showUpdateProjectModal(projectName: string): void {
+		const project = this.projectsData.find((p) => p.name === projectName);
+		if (!project) {
+			this.showMessage("Project not found", "error");
+			return;
+		}
+
+		const modal = this.createModal(
+			"Update Project",
+			`
+			<form id="update-project-form">
+				<div class="form-group">
+					<label for="update-project-name">Project Name</label>
+					<input type="text" id="update-project-name" name="name" value="${this.escapeHtml(
+						project.name
+					)}" readonly />
+				</div>
+				<div class="form-group">
+					<label for="update-project-description">Description</label>
+					<textarea id="update-project-description" name="description" rows="3">${
+						project.description || ""
+					}</textarea>
+				</div>
+				<div class="form-group">
+					<label for="update-project-count">Count</label>
+					<input type="number" id="update-project-count" name="count" value="${
+						project.count
+					}" min="0" />
+				</div>
+				<div class="form-group">
+					<label for="update-admin-password">Admin Password *</label>
+					<input type="password" id="update-admin-password" name="password" required placeholder="Enter admin password" />
+				</div>
+			</form>
+		`,
+			[
+				{
+					text: "Cancel",
+					class: "btn btn-outline",
+					action: () => this.closeModal(),
+				},
+				{
+					text: "Update Project",
+					class: "btn btn-primary",
+					action: () => this.handleUpdateProject(),
+				},
+			]
+		);
+
+		this.showModal(modal);
+	}
+
+	/**
+	 * Handle update project form submission
+	 */
+	private async handleUpdateProject(): Promise<void> {
+		const form = document.getElementById(
+			"update-project-form"
+		) as HTMLFormElement;
+		if (!form) return;
+
+		const formData = new FormData(form);
+		const name = formData.get("name") as string;
+		const description = formData.get("description") as string;
+		const password = formData.get("password") as string;
+
+		if (!password.trim()) {
+			this.showMessage("Please enter the admin password", "error");
+			return;
+		}
+
+		try {
+			this.closeModal();
+			this.showMessage("Updating project...", "info");
+
+			await this.api.updateProject(name, description, "", password);
+			this.showMessage(
+				`Project "${name}" updated successfully!`,
+				"success"
+			);
+			await this.refreshData();
+		} catch (error) {
+			console.error("Error updating project:", error);
+			this.showMessage(`Error updating project: ${error}`, "error");
+		}
+	}
+
+	/**
+	 * Show delete confirmation modal
+	 */
+	public showDeleteConfirmation(projectName: string): void {
+		const modal = this.createModal(
+			"Delete Project",
+			`
+			<div style="text-align: center; padding: 1rem;">
+				<i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--error); margin-bottom: 1rem;"></i>
+				<h3>Are you sure?</h3>
+				<p>This will permanently delete the project <strong>"${this.escapeHtml(
+					projectName
+				)}"</strong> and all its data.</p>
+				<p style="color: var(--error); font-weight: 600;">This action cannot be undone!</p>
+			</div>
+			<form id="delete-project-form" style="margin-top: 1rem;">
+				<div class="form-group">
+					<label for="delete-admin-password">Admin Password *</label>
+					<input type="password" id="delete-admin-password" name="password" required placeholder="Enter admin password to confirm" />
+				</div>
+			</form>
+		`,
+			[
+				{
+					text: "Cancel",
+					class: "btn btn-outline",
+					action: () => this.closeModal(),
+				},
+				{
+					text: "Delete Project",
+					class: "btn btn-danger",
+					action: () => this.handleDeleteProject(projectName),
+				},
+			]
+		);
+
+		this.showModal(modal);
+	}
+
+	/**
+	 * Handle delete project
+	 */
+	private async handleDeleteProject(projectName: string): Promise<void> {
+		const form = document.getElementById(
+			"delete-project-form"
+		) as HTMLFormElement;
+		if (!form) return;
+
+		const formData = new FormData(form);
+		const password = formData.get("password") as string;
+
+		if (!password.trim()) {
+			this.showMessage("Please enter the admin password", "error");
+			return;
+		}
+
+		try {
+			this.closeModal();
+			this.showMessage("Deleting project...", "info");
+
+			await this.api.deleteProject(projectName, password);
+			this.showMessage(
+				`Project "${projectName}" deleted successfully!`,
+				"success"
+			);
+			await this.refreshData();
+		} catch (error) {
+			console.error("Error deleting project:", error);
+			this.showMessage(`Error deleting project: ${error}`, "error");
+		}
+	}
+
+	/**
+	 * Show webhook modal with alias and auth token
+	 */
+	public showWebhookModal(projectName: string): void {
+		const project = this.projectsData.find((p) => p.name === projectName);
+		if (!project) {
+			this.showMessage("Project not found", "error");
+			return;
+		}
+
+		const alias = project.alias || "(not available)";
+		const webhookUrl = `https://api.github.com/repos/${this.api.getRepoOwner()}/${this.api.getRepoName()}/dispatches`;
+		const samplePayload = JSON.stringify(
+			{
+				event_type: "increment",
+				client_payload: {
+					project_alias: alias,
+				},
+			},
+			null,
+			2
+		);
+
+		const modal = this.createModal(
+			`Webhook Information - ${projectName}`,
+			`
+			<div class="webhook-info">
+				<div class="form-group">
+					<label>Project Alias</label>
+					<input type="text" readonly value="${alias}" style="font-family: monospace; font-size: 0.875rem;" />
+				</div>
+				<div class="form-group">
+					<label>Webhook URL</label>
+					<input type="text" readonly value="${webhookUrl}" style="font-family: monospace; font-size: 0.875rem;" />
+				</div>
+				<div class="form-group">
+					<label>Sample Payload</label>
+					<textarea readonly rows="5" style="font-family: monospace; font-size: 0.75rem;">${samplePayload}</textarea>
+				</div>
+				<div class="form-group">
+					<label>Instructions</label>
+					<p>Use the alias and your project-specific auth token in the webhook request. <b>Never share your admin password or GitHub token.</b></p>
+				</div>
+			</div>
+		`,
+			[
+				{
+					text: "Close",
+					class: "btn btn-primary",
+					action: () => this.closeModal(),
+				},
+			]
+		);
+
+		this.showModal(modal);
+	}
+
+	/**
+	 * Test webhook
+	 */
+	public async testWebhook(projectName: string): Promise<void> {
+		try {
+			this.showMessage("Testing webhook...", "info");
+
+			await this.api.pingProject(projectName);
+			this.showMessage(`Webhook test successful!`, "success");
+			await this.refreshData();
+		} catch (error) {
+			console.error("Error testing webhook:", error);
+			this.showMessage(`Webhook test failed: ${error}`, "error");
+		}
+	}
+
+	/**
+	 * Get JavaScript sample code
+	 */
+	private getJavaScriptSample(url: string): string {
+		return `// Using fetch API with GitHub token
+const response = await fetch('${url}', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_GITHUB_TOKEN',
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    event_type: 'ping',
+    client_payload: { project_name: 'PROJECT_NAME' }
+  })
+});`;
+	}
+
+	/**
+	 * Get cURL sample command
+	 */
+	private getCurlSample(url: string): string {
+		return `curl -X POST "${url}" \\
+  -H "Authorization: Bearer YOUR_GITHUB_TOKEN" \\
+  -H "Accept: application/vnd.github.v3+json" \\
+  -H "Content-Type: application/json" \\
+  -d '{"event_type":"ping","client_payload":{"project_name":"PROJECT_NAME"}}'`;
+	}
+
+	/**
+	 * Show statistics modal
+	 */
+	public showStatsModal(): void {
+		const projects = this.projectsData;
+		const totalProjects = projects.length;
+		const totalCount = projects.reduce((sum, p) => sum + p.count, 0);
+		const averageCount =
+			totalProjects > 0 ? (totalCount / totalProjects).toFixed(2) : "0";
+
+		// Sort projects by count for top performers
+		const topProjects = [...projects]
+			.sort((a, b) => b.count - a.count)
+			.slice(0, 5);
+
+		const modal = this.createModal(
+			"Project Statistics",
+			`
+			<div class="stats-overview" style="margin-bottom: 2rem;">
+				<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+					<div style="text-align: center; padding: 1rem; background: var(--gray-50); border-radius: var(--border-radius);">
+						<div style="font-size: 2rem; font-weight: 700; color: var(--primary);">${totalProjects}</div>
+						<div style="font-size: 0.875rem; color: var(--gray-600);">Total Projects</div>
+					</div>
+					<div style="text-align: center; padding: 1rem; background: var(--gray-50); border-radius: var(--border-radius);">
+						<div style="font-size: 2rem; font-weight: 700; color: var(--secondary);">${totalCount.toLocaleString()}</div>
+						<div style="font-size: 0.875rem; color: var(--gray-600);">Total Clicks</div>
+					</div>
+					<div style="text-align: center; padding: 1rem; background: var(--gray-50); border-radius: var(--border-radius);">
+						<div style="font-size: 2rem; font-weight: 700; color: var(--accent);">${averageCount}</div>
+						<div style="font-size: 0.875rem; color: var(--gray-600);">Average per Project</div>
+					</div>
+				</div>
+
+				<h4 style="margin-bottom: 1rem; color: var(--gray-900);">Top Performers</h4>
+				<div style="space-y: 0.5rem;">
+					${topProjects
+						.map(
+							(project, index) => `
+						<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--gray-50); border-radius: var(--border-radius); margin-bottom: 0.5rem;">
+							<div style="display: flex; align-items: center; gap: 0.75rem;">
+								<span style="width: 1.5rem; height: 1.5rem; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600;">${
+									index + 1
+								}</span>
+								<span style="font-weight: 500;">${this.escapeHtml(project.name)}</span>
+							</div>
+							<span style="font-weight: 600; color: var(--primary);">${project.count.toLocaleString()}</span>
+						</div>
+					`
+						)
+						.join("")}
+				</div>
+			</div>
+		`,
+			[
+				{
+					text: "Export Data",
+					class: "btn btn-outline",
+					action: () => this.exportData(),
+				},
+				{
+					text: "Close",
+					class: "btn btn-primary",
+					action: () => this.closeModal(),
+				},
+			]
+		);
+
+		this.showModal(modal);
+	}
+
+	/**
+	 * Export data as JSON
+	 */
+	public exportData(): void {
+		const data = {
+			exported_at: new Date().toISOString(),
+			storage_mode: this.storageMode,
+			projects: this.projectsData,
+			analytics: this.analyticsData,
+		};
+
+		const blob = new Blob([JSON.stringify(data, null, 2)], {
+			type: "application/json",
+		});
+		const url = URL.createObjectURL(blob);
+
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `actionscounter-export-${
+			new Date().toISOString().split("T")[0]
+		}.json`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+
+		this.showMessage("Data exported successfully!", "success");
+	}
+
+	/**
+	 * Create modal element
+	 */
+	private createModal(
+		title: string,
+		content: string,
+		actions: Array<{ text: string; class: string; action: () => void }>
+	): HTMLElement {
+		const overlay = document.createElement("div");
+		overlay.className = "modal-overlay";
+		overlay.innerHTML = `
+			<div class="modal">
+				<div class="modal-header">
+					<h3>${title}</h3>
+					<button type="button" class="close-btn" onclick="ui.closeModal()">
+						<i class="fas fa-times"></i>
+					</button>
+				</div>
+				<div class="modal-body">
+					${content}
+					<div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+						${actions
+							.map(
+								(action, index) => `
+							<button type="button" class="${action.class}" data-action="${index}">
+								${action.text}
+							</button>
+						`
+							)
+							.join("")}
+					</div>
+				</div>
+			</div>
+		`;
+
+		// Add action event listeners
+		actions.forEach((action, index) => {
+			const button = overlay.querySelector(
+				`[data-action="${index}"]`
+			) as HTMLButtonElement;
+			if (button) {
+				button.addEventListener("click", action.action);
+			}
+		});
+
+		// Close on overlay click
+		overlay.addEventListener("click", (e) => {
+			if (e.target === overlay) {
+				this.closeModal();
+			}
+		});
+
+		return overlay;
+	}
+
+	/**
+	 * Show modal
+	 */
+	private showModal(modal: HTMLElement): void {
+		document.body.appendChild(modal);
+		// Force reflow before adding show class for animation
+		modal.offsetHeight;
+		modal.classList.add("show");
+	}
+
+	/**
+	 * Close modal
+	 */
+	public closeModal(): void {
+		const modals = document.querySelectorAll(".modal-overlay");
+		modals.forEach((modal) => {
+			modal.classList.remove("show");
+			setTimeout(() => {
+				if (modal.parentNode) {
+					modal.parentNode.removeChild(modal);
+				}
+			}, 300);
+		});
+	}
+
+	/**
+	 * Show project details
+	 */
+	private showProjectDetails(projectName: string): void {
+		const project = this.projectsData.find((p) => p.name === projectName);
+		if (!project) {
+			this.showMessage("Project not found", "error");
+			return;
+		}
+
+		// Show project details including alias and webhook info
+		const detailsModal = document.getElementById("project-details-modal");
+		if (!detailsModal) return;
+		detailsModal.querySelector(".project-name").textContent = project.name;
+		detailsModal.querySelector(".project-alias").textContent =
+			project.alias || "-";
+		detailsModal.querySelector(".project-url").textContent =
+			project.url || "-";
+		detailsModal.querySelector(".project-count").textContent = String(
+			project.count
+		);
+		// Show webhook info if alias exists
+		const webhookSection = detailsModal.querySelector(".webhook-info");
+		if (project.alias && webhookSection) {
+			webhookSection.classList.remove("hidden");
+			webhookSection.querySelector(".webhook-url").textContent =
+				this.generateWebhookUrl(project.alias);
+			webhookSection.querySelector(".webhook-mode").textContent =
+				this.storageMode;
+		} else if (webhookSection) {
+			webhookSection.classList.add("hidden");
+		}
+		// Show storage mode
+		detailsModal.querySelector(".storage-mode").textContent =
+			this.storageMode;
+		// Show modal
+		detailsModal.classList.add("open");
+	}
+
+	/**
+	 * Generate webhook URL
+	 */
+	private generateWebhookUrl(alias: string): string {
+		// Example webhook URL (customize as needed)
+		return `https://api.github.com/repos/${this.api.repoOwner}/${this.api.repoName}/dispatches?alias=${alias}`;
 	}
 }
 
-// Global instance for onclick handlers
+// Global UI instance for easy access
+export let ui: UI;

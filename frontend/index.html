@@ -4,19 +4,58 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="repository" content="__REPO_OWNER_PLACEHOLDER__/__REPO_NAME_PLACEHOLDER__" />
-		<title>ActionsCounter - Secure Project Tracker</title>
+		<title>ActionsCounter - Project Analytics Dashboard</title>
 		<link rel="icon" href="/icon.png" type="image/png" />
 		<link rel="shortcut icon" href="/icon.png" type="image/png" />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+		<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 		<style>
 			:root {
-				--primary-color: #2563eb;
-				--success-color: #10b981;
-				--error-color: #ef4444;
-				--warning-color: #f59e0b;
-				--bg-color: #f8fafc;
-				--card-color: #ffffff;
-				--text-color: #1f2937;
-				--border-color: #e5e7eb;
+				/* Modern Color Palette */
+				--primary: #6366f1;
+				--primary-dark: #4f46e5;
+				--primary-light: #818cf8;
+				--secondary: #10b981;
+				--secondary-dark: #059669;
+				--accent: #f59e0b;
+				--accent-dark: #d97706;
+				
+				/* Status Colors */
+				--success: #10b981;
+				--warning: #f59e0b;
+				--error: #ef4444;
+				--info: #3b82f6;
+				
+				/* Neutral Colors */
+				--white: #ffffff;
+				--gray-50: #f9fafb;
+				--gray-100: #f3f4f6;
+				--gray-200: #e5e7eb;
+				--gray-300: #d1d5db;
+				--gray-400: #9ca3af;
+				--gray-500: #6b7280;
+				--gray-600: #4b5563;
+				--gray-700: #374151;
+				--gray-800: #1f2937;
+				--gray-900: #111827;
+				
+				/* Gradients */
+				--gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				--gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+				--gradient-success: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+				--gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+				
+				/* Shadows */
+				--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+				--shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+				--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+				--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+				--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+				
+				/* Borders */
+				--border-radius: 0.5rem;
+				--border-radius-lg: 0.75rem;
+				--border-radius-xl: 1rem;
 			}
 
 			* {
@@ -26,271 +65,453 @@
 			}
 
 			body {
-				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-				background-color: var(--bg-color);
-				color: var(--text-color);
+				font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+				min-height: 100vh;
+				color: var(--gray-800);
 				line-height: 1.6;
 			}
 
-			.container {
+			/* Navigation */
+			.navbar {
+				background: rgba(255, 255, 255, 0.95);
+				backdrop-filter: blur(20px);
+				border-bottom: 1px solid var(--gray-200);
+				padding: 1rem 0;
+				position: sticky;
+				top: 0;
+				z-index: 100;
+				box-shadow: var(--shadow-sm);
+			}
+
+			.navbar .container {
 				max-width: 1200px;
 				margin: 0 auto;
-				padding: 20px;
-			}
-
-			header {
-				background: var(--card-color);
-				padding: 20px;
-				border-radius: 12px;
-				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-				margin-bottom: 30px;
-				text-align: center;
-			}
-
-			h1 {
-				color: var(--primary-color);
-				margin-bottom: 10px;
-			}
-
-			.subtitle {
-				color: #6b7280;
-				font-size: 14px;
-			}
-
-			.nav {
+				padding: 0 2rem;
 				display: flex;
-				gap: 10px;
-				margin-bottom: 30px;
-				flex-wrap: wrap;
+				justify-content: space-between;
+				align-items: center;
 			}
 
-			.nav-btn {
-				padding: 12px 24px;
-				background: var(--card-color);
-				border: 2px solid var(--border-color);
-				border-radius: 8px;
-				cursor: pointer;
-				transition: all 0.3s ease;
-				font-weight: 500;
+			.logo {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+				font-weight: 700;
+				font-size: 1.5rem;
+				color: var(--primary);
 			}
 
-			.nav-btn:hover {
-				border-color: var(--primary-color);
-				background: #eff6ff;
+			.logo i {
+				font-size: 1.75rem;
 			}
 
-			.nav-btn.active {
-				background: var(--primary-color);
+			.nav-actions {
+				display: flex;
+				gap: 1rem;
+				align-items: center;
+			}
+
+			/* Main Container */
+			.main-container {
+				max-width: 1200px;
+				margin: 0 auto;
+				padding: 2rem;
+				min-height: calc(100vh - 100px);
+			}
+
+			/* Hero Section */
+			.hero {
+				text-align: center;
+				margin-bottom: 3rem;
 				color: white;
-				border-color: var(--primary-color);
 			}
 
-			.section {
-				background: var(--card-color);
-				padding: 30px;
-				border-radius: 12px;
-				box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+			.hero h1 {
+				font-size: 3rem;
+				font-weight: 700;
+				margin-bottom: 1rem;
+				text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 			}
 
-			.hidden {
-				display: none !important;
+			.hero p {
+				font-size: 1.25rem;
+				opacity: 0.9;
+				max-width: 600px;
+				margin: 0 auto 2rem;
 			}
 
-			.form-group {
-				margin-bottom: 20px;
+			/* Dashboard Grid */
+			.dashboard {
+				display: grid;
+				gap: 2rem;
+				margin-bottom: 3rem;
 			}
 
-			label {
-				display: block;
-				margin-bottom: 5px;
-				font-weight: 500;
-			}
-
-			input,
-			textarea {
-				width: 100%;
-				padding: 12px;
-				border: 2px solid var(--border-color);
-				border-radius: 8px;
-				font-size: 14px;
-				transition: border-color 0.3s ease;
-			}
-
-			input:focus,
-			textarea:focus {
-				outline: none;
-				border-color: var(--primary-color);
-			}
-
-			textarea {
-				height: 80px;
-				resize: vertical;
-			}
-
-			.btn {
-				padding: 12px 24px;
-				background: var(--primary-color);
-				color: white;
-				border: none;
-				border-radius: 8px;
-				cursor: pointer;
-				font-weight: 500;
-				transition: all 0.3s ease;
-			}
-
-			.btn:hover {
-				background: #1d4ed8;
-				transform: translateY(-1px);
-			}
-
-			.btn-secondary {
-				background: #6b7280;
-				font-size: 12px;
-				padding: 8px 16px;
-				margin-right: 8px;
-			}
-
-			.btn-danger {
-				background: var(--error-color);
-				font-size: 12px;
-				padding: 8px 16px;
-			}
-
-			.btn-danger:hover {
-				background: #dc2626;
-			}
-
+			/* Stats Cards */
 			.stats-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-				gap: 20px;
-				margin-bottom: 30px;
+				grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+				gap: 1.5rem;
+				margin-bottom: 2rem;
 			}
 
 			.stat-card {
-				background: linear-gradient(
-					135deg,
-					var(--primary-color),
-					#3b82f6
-				);
-				color: white;
-				padding: 20px;
-				border-radius: 12px;
-				text-align: center;
-			}
-
-			.stat-card h3 {
-				font-size: 14px;
-				margin-bottom: 10px;
-				opacity: 0.9;
-			}
-
-			.stat-value {
-				font-size: 24px;
-				font-weight: bold;
-			}
-
-			.projects-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-				gap: 20px;
-			}
-
-			.project-card {
-				border: 2px solid var(--border-color);
-				border-radius: 12px;
-				padding: 20px;
+				background: white;
+				border-radius: var(--border-radius-lg);
+				padding: 2rem;
+				box-shadow: var(--shadow-lg);
+				border: 1px solid var(--gray-100);
+				position: relative;
+				overflow: hidden;
 				transition: all 0.3s ease;
 			}
 
-			.project-card:hover {
-				border-color: var(--primary-color);
+			.stat-card:hover {
+				transform: translateY(-4px);
+				box-shadow: var(--shadow-xl);
+			}
+
+			.stat-card::before {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: 0;
+				right: 0;
+				height: 4px;
+				background: var(--gradient-primary);
+			}
+
+			.stat-card.success::before {
+				background: var(--gradient-success);
+			}
+
+			.stat-card.warning::before {
+				background: var(--gradient-warning);
+			}
+
+			.stat-card.secondary::before {
+				background: var(--gradient-secondary);
+			}
+
+			.stat-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 1rem;
+			}
+
+			.stat-title {
+				font-size: 0.875rem;
+				font-weight: 600;
+				color: var(--gray-600);
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+			}
+
+			.stat-icon {
+				width: 3rem;
+				height: 3rem;
+				border-radius: var(--border-radius);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				background: var(--gray-100);
+				color: var(--primary);
+				font-size: 1.25rem;
+			}
+
+			.stat-value {
+				font-size: 2.5rem;
+				font-weight: 700;
+				color: var(--gray-900);
+				margin-bottom: 0.5rem;
+			}
+
+			.stat-label {
+				font-size: 0.875rem;
+				color: var(--gray-500);
+			}
+
+			/* Action Buttons */
+			.action-section {
+				background: white;
+				border-radius: var(--border-radius-xl);
+				padding: 2rem;
+				box-shadow: var(--shadow-lg);
+				margin-bottom: 2rem;
+			}
+
+			.action-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 2rem;
+			}
+
+			.action-title {
+				font-size: 1.5rem;
+				font-weight: 600;
+				color: var(--gray-900);
+			}
+
+			.action-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+				gap: 1rem;
+			}
+
+			/* Modern Buttons */
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.5rem;
+				padding: 0.75rem 1.5rem;
+				border: none;
+				border-radius: var(--border-radius);
+				font-weight: 600;
+				font-size: 0.875rem;
+				text-decoration: none;
+				cursor: pointer;
+				transition: all 0.2s ease;
+				position: relative;
+				overflow: hidden;
+			}
+
+			.btn:before {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: -100%;
+				width: 100%;
+				height: 100%;
+				background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+				transition: left 0.5s;
+			}
+
+			.btn:hover:before {
+				left: 100%;
+			}
+
+			.btn-primary {
+				background: var(--primary);
+				color: white;
+				box-shadow: var(--shadow-md);
+			}
+
+			.btn-primary:hover {
+				background: var(--primary-dark);
 				transform: translateY(-2px);
-				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+				box-shadow: var(--shadow-lg);
+			}
+
+			.btn-secondary {
+				background: var(--secondary);
+				color: white;
+				box-shadow: var(--shadow-md);
+			}
+
+			.btn-secondary:hover {
+				background: var(--secondary-dark);
+				transform: translateY(-2px);
+				box-shadow: var(--shadow-lg);
+			}
+
+			.btn-outline {
+				background: transparent;
+				color: var(--primary);
+				border: 2px solid var(--primary);
+			}
+
+			.btn-outline:hover {
+				background: var(--primary);
+				color: white;
+				transform: translateY(-2px);
+			}
+
+			/* Projects Section */
+			.projects-section {
+				background: white;
+				border-radius: var(--border-radius-xl);
+				padding: 2rem;
+				box-shadow: var(--shadow-lg);
+			}
+
+			.projects-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 2rem;
+				flex-wrap: wrap;
+				gap: 1rem;
+			}
+
+			.projects-title {
+				font-size: 1.5rem;
+				font-weight: 600;
+				color: var(--gray-900);
+			}
+
+			.search-box {
+				display: flex;
+				align-items: center;
+				gap: 1rem;
+				flex: 1;
+				max-width: 400px;
+			}
+
+			.search-input {
+				flex: 1;
+				padding: 0.75rem 1rem;
+				border: 2px solid var(--gray-200);
+				border-radius: var(--border-radius);
+				font-size: 0.875rem;
+				transition: all 0.2s ease;
+			}
+
+			.search-input:focus {
+				outline: none;
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+			}
+
+			/* Project Grid */
+			.projects-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+				gap: 1.5rem;
+			}
+
+			.project-card {
+				background: white;
+				border: 1px solid var(--gray-200);
+				border-radius: var(--border-radius-lg);
+				padding: 1.5rem;
+				transition: all 0.3s ease;
+				position: relative;
+				overflow: hidden;
+			}
+
+			.project-card:hover {
+				transform: translateY(-4px);
+				box-shadow: var(--shadow-xl);
+				border-color: var(--primary-light);
 			}
 
 			.project-header {
 				display: flex;
 				justify-content: space-between;
-				align-items: center;
-				margin-bottom: 10px;
+				align-items: flex-start;
+				margin-bottom: 1rem;
 			}
 
-			.project-header h3 {
-				color: var(--primary-color);
+			.project-name {
+				font-size: 1.125rem;
+				font-weight: 600;
+				color: var(--gray-900);
+				margin-bottom: 0.25rem;
 			}
 
-			.ping-count {
-				background: #eff6ff;
-				color: var(--primary-color);
-				padding: 4px 12px;
-				border-radius: 20px;
-				font-size: 12px;
-				font-weight: 500;
+			.project-count {
+				background: var(--gradient-primary);
+				color: white;
+				padding: 0.5rem 1rem;
+				border-radius: 2rem;
+				font-weight: 600;
+				font-size: 0.875rem;
 			}
 
 			.project-description {
-				color: #6b7280;
-				margin-bottom: 15px;
+				color: var(--gray-600);
+				font-size: 0.875rem;
+				margin-bottom: 1rem;
 				line-height: 1.5;
 			}
 
-			.project-url {
-				color: var(--primary-color);
-				text-decoration: none;
-				font-weight: 500;
-				display: inline-block;
-				margin-bottom: 15px;
-			}
-
 			.project-meta {
-				font-size: 12px;
-				color: #9ca3af;
-				margin-bottom: 15px;
-			}
-
-			.project-meta span {
-				display: block;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin-bottom: 1rem;
+				font-size: 0.75rem;
+				color: var(--gray-500);
 			}
 
 			.project-actions {
 				display: flex;
-				gap: 5px;
+				gap: 0.5rem;
 				flex-wrap: wrap;
 			}
 
+			.btn-sm {
+				padding: 0.5rem 1rem;
+				font-size: 0.75rem;
+			}
+
+			/* Empty State */
+			.empty-state {
+				text-align: center;
+				padding: 4rem 2rem;
+				color: var(--gray-500);
+			}
+
+			.empty-state i {
+				font-size: 4rem;
+				margin-bottom: 1rem;
+				opacity: 0.5;
+			}
+
+			.empty-state h3 {
+				font-size: 1.25rem;
+				margin-bottom: 0.5rem;
+				color: var(--gray-700);
+			}
+
+			/* Storage Mode Indicator */
+			.storage-indicator {
+				position: fixed;
+				top: 6rem;
+				right: 2rem;
+				background: rgba(255, 255, 255, 0.95);
+				backdrop-filter: blur(10px);
+				padding: 0.75rem 1rem;
+				border-radius: 2rem;
+				font-size: 0.75rem;
+				font-weight: 600;
+				box-shadow: var(--shadow-lg);
+				border: 1px solid var(--gray-200);
+				z-index: 50;
+			}
+
+			/* Messages */
 			.message {
-				padding: 12px 20px;
-				border-radius: 8px;
-				margin-bottom: 20px;
+				padding: 1rem 1.5rem;
+				border-radius: var(--border-radius);
+				margin-bottom: 1rem;
 				font-weight: 500;
+				border-left: 4px solid;
 			}
 
 			.message.success {
-				background: #d1fae5;
+				background: #ecfdf5;
 				color: #065f46;
-				border: 1px solid #10b981;
+				border-color: var(--success);
 			}
 
 			.message.error {
-				background: #fee2e2;
+				background: #fef2f2;
 				color: #991b1b;
-				border: 1px solid #ef4444;
+				border-color: var(--error);
 			}
 
 			.message.info {
-				background: #dbeafe;
+				background: #eff6ff;
 				color: #1e40af;
-				border: 1px solid #3b82f6;
+				border-color: var(--info);
 			}
 
-			.no-projects {
-				text-align: center;
-				color: #6b7280;
-				padding: 40px;
-				font-style: italic;
-			}
-
+			/* Modal Overlay */
 			.modal-overlay {
 				position: fixed;
 				top: 0;
@@ -298,7 +519,7 @@
 				right: 0;
 				bottom: 0;
 				background: rgba(0, 0, 0, 0.6);
-				backdrop-filter: blur(4px);
+				backdrop-filter: blur(8px);
 				display: flex;
 				align-items: center;
 				justify-content: center;
@@ -314,14 +535,13 @@
 			}
 
 			.modal {
-				background: var(--card-color);
-				border-radius: 16px;
-				padding: 0;
+				background: white;
+				border-radius: var(--border-radius-xl);
 				max-width: 600px;
 				width: 90%;
 				max-height: 85vh;
 				overflow-y: auto;
-				box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+				box-shadow: var(--shadow-xl);
 				transform: scale(0.8) translateY(-20px);
 				transition: all 0.3s ease;
 			}
@@ -331,367 +551,273 @@
 			}
 
 			.modal-header {
-				padding: 24px 30px;
-				border-bottom: 1px solid var(--border-color);
+				padding: 1.5rem 2rem;
+				border-bottom: 1px solid var(--gray-200);
 				display: flex;
 				justify-content: space-between;
 				align-items: center;
-				background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-				border-radius: 16px 16px 0 0;
+				background: var(--gray-50);
+				border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;
 			}
 
 			.modal-header h3 {
 				margin: 0;
-				color: var(--primary-color);
-				font-size: 18px;
+				color: var(--gray-900);
+				font-size: 1.25rem;
 				font-weight: 600;
 			}
 
 			.modal-body {
-				padding: 30px;
+				padding: 2rem;
 			}
 
 			.close-btn {
 				background: rgba(107, 114, 128, 0.1);
 				border: none;
 				border-radius: 50%;
-				width: 32px;
-				height: 32px;
+				width: 2rem;
+				height: 2rem;
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				font-size: 18px;
+				font-size: 1rem;
 				cursor: pointer;
-				color: #6b7280;
+				color: var(--gray-500);
 				transition: all 0.2s ease;
 			}
 
 			.close-btn:hover {
 				background: rgba(239, 68, 68, 0.1);
-				color: var(--error-color);
+				color: var(--error);
 				transform: scale(1.1);
 			}
 
-			.webhook-field {
-				margin-bottom: 20px;
+			/* Form Elements */
+			.form-group {
+				margin-bottom: 1.5rem;
 			}
 
-			.webhook-field label {
-				font-weight: 600;
-				margin-bottom: 8px;
-			}
-
-			.webhook-field input,
-			.webhook-field textarea {
-				font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-				font-size: 12px;
-			}
-
-			.copy-btn {
-				background: var(--success-color);
-				color: white;
-				border: none;
-				padding: 6px 12px;
-				border-radius: 4px;
-				cursor: pointer;
-				font-size: 12px;
-				margin-left: 10px;
-			}
-
-			.top-actions {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				margin-bottom: 20px;
-				flex-wrap: wrap;
-				gap: 10px;
-			}
-
-			.config-section {
-				background: #fef3c7;
-				border: 2px solid #fbbf24;
-				border-radius: 8px;
-				padding: 20px;
-				margin-bottom: 20px;
-			}
-
-			.config-section h3 {
-				color: #92400e;
-				margin-bottom: 10px;
-			}
-
-			.config-section p {
-				color: #92400e;
-				font-size: 14px;
-			}
-
-			/* Enhanced Modal Form Styling */
-			.modal .form-group {
-				margin-bottom: 24px;
-			}
-
-			.modal label {
+			.form-group label {
 				display: block;
-				margin-bottom: 8px;
+				margin-bottom: 0.5rem;
 				font-weight: 600;
-				color: var(--text-color);
-				font-size: 14px;
+				color: var(--gray-700);
 			}
 
-			.modal input,
-			.modal textarea,
-			.modal select {
+			.form-group input,
+			.form-group textarea,
+			.form-group select {
 				width: 100%;
-				padding: 12px 16px;
-				border: 2px solid var(--border-color);
-				border-radius: 8px;
-				font-size: 14px;
+				padding: 0.75rem 1rem;
+				border: 2px solid var(--gray-200);
+				border-radius: var(--border-radius);
+				font-size: 0.875rem;
 				transition: all 0.2s ease;
-				background: white;
 			}
 
-			.modal input:focus,
-			.modal textarea:focus,
-			.modal select:focus {
+			.form-group input:focus,
+			.form-group textarea:focus,
+			.form-group select:focus {
 				outline: none;
-				border-color: var(--primary-color);
-				box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+				border-color: var(--primary);
+				box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 			}
 
-			.modal-actions {
-				display: flex;
-				gap: 12px;
-				justify-content: flex-end;
-				margin-top: 24px;
-				padding-top: 20px;
-				border-top: 1px solid var(--border-color);
+			/* Hidden class */
+			.hidden {
+				display: none !important;
 			}
 
-			.modal-actions .btn {
-				min-width: 100px;
-			}
-
-			/* Fade overlay animation */
-			@keyframes fadeIn {
-				from { opacity: 0; }
-				to { opacity: 1; }
-			}
-
-			@keyframes fadeOut {
-				from { opacity: 1; }
-				to { opacity: 0; }
-			}
-
-			@keyframes slideIn {
-				from {
-					transform: scale(0.8) translateY(-20px);
-					opacity: 0;
-				}
-				to {
-					transform: scale(1) translateY(0);
-					opacity: 1;
-				}
-			}
-
-			@keyframes slideOut {
-				from {
-					transform: scale(1) translateY(0);
-					opacity: 1;
-				}
-				to {
-					transform: scale(0.8) translateY(-20px);
-					opacity: 0;
-				}
-			}
-
+			/* Responsive Design */
 			@media (max-width: 768px) {
-				.container {
-					padding: 10px;
+				.main-container {
+					padding: 1rem;
 				}
 
-				.nav {
-					flex-direction: column;
+				.hero h1 {
+					font-size: 2rem;
 				}
 
-				.nav-btn {
-					text-align: center;
+				.hero p {
+					font-size: 1rem;
+				}
+
+				.navbar .container {
+					padding: 0 1rem;
 				}
 
 				.stats-grid {
-					grid-template-columns: repeat(2, 1fr);
+					grid-template-columns: 1fr;
 				}
 
 				.projects-grid {
 					grid-template-columns: 1fr;
 				}
 
-				.top-actions {
+				.action-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.projects-header {
 					flex-direction: column;
 					align-items: stretch;
 				}
+
+				.search-box {
+					max-width: none;
+				}
+			}
+
+			/* Animation keyframes */
+			@keyframes fadeInUp {
+				from {
+					opacity: 0;
+					transform: translateY(30px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			.fade-in-up {
+				animation: fadeInUp 0.6s ease-out;
+			}
+
+			/* Loading Animation */
+			.loading {
+				display: inline-block;
+				width: 20px;
+				height: 20px;
+				border: 3px solid rgba(255,255,255,.3);
+				border-radius: 50%;
+				border-top-color: #fff;
+				animation: spin 1s ease-in-out infinite;
+			}
+
+			@keyframes spin {
+				to { transform: rotate(360deg); }
 			}
 		</style>
 	</head>
 	<body>
-		<div class="container">
-			<header>
-				<h1>🚀 ActionsCounter</h1>
-				<p class="subtitle">
-					Secure Project Tracking with GitHub Actions
-				</p>
-			</header>
+		<!-- Navigation -->
+		<nav class="navbar">
+			<div class="container">
+				<div class="logo">
+					<i class="fas fa-chart-line"></i>
+					ActionsCounter
+				</div>
+				<div class="nav-actions">
+					<button class="btn btn-outline" onclick="ui.refreshData()">
+						<i class="fas fa-sync-alt"></i> Refresh
+					</button>
+				</div>
+			</div>
+		</nav>
 
+		<!-- Storage Mode Indicator -->
+		<div id="storage-indicator" class="storage-indicator hidden">
+			<i class="fas fa-database"></i> <span id="storage-mode-text">Loading...</span>
+		</div>
+
+		<!-- Main Container -->
+		<div class="main-container">
+			<!-- Hero Section -->
+			<section class="hero fade-in-up">
+				<h1>Project Analytics Dashboard</h1>
+				<p>Track, monitor, and analyze your project metrics with real-time insights and beautiful visualizations.</p>
+			</section>
+
+			<!-- Messages -->
 			<div id="message-container" class="hidden"></div>
 
-			<nav class="nav">
-				<button class="nav-btn active" data-target="dashboard">
-					📊 Dashboard
-				</button>
-				<button class="nav-btn" data-target="add-project">
-					➕ Add Project
-				</button>
-				<button class="nav-btn" data-target="ping-project">
-					📡 Ping Project
-				</button>
-				<button class="nav-btn" data-target="webhooks">
-					🔗 Webhooks
-				</button>
-			</nav>
-
-			<!-- Dashboard Section -->
-			<section id="dashboard" class="section">
-				<div class="top-actions">
-					<h2>📊 Project Dashboard</h2>
-					<div>
-						<button id="refresh-btn" class="btn">🔄 Refresh</button>
+			<!-- Dashboard Stats -->
+			<section class="stats-grid fade-in-up">
+				<div class="stat-card">
+					<div class="stat-header">
+						<div class="stat-title">Total Projects</div>
+						<div class="stat-icon"><i class="fas fa-folder"></i></div>
 					</div>
+					<div class="stat-value" id="total-projects">0</div>
+					<div class="stat-label">Active projects</div>
 				</div>
 
-				<div class="config-section">
-					<h3>✅ Secure Configuration</h3>
-					<p>
-						This system uses repository secrets for security.
-						All CRUD operations are performed through GitHub Actions with your
-						admin password for authentication.
-					</p>
+				<div class="stat-card success">
+					<div class="stat-header">
+						<div class="stat-title">Total Counts</div>
+						<div class="stat-icon"><i class="fas fa-counter"></i></div>
+					</div>
+					<div class="stat-value" id="total-count">0</div>
+					<div class="stat-label">All-time clicks</div>
 				</div>
 
-				<div id="stats-container" class="stats-grid">
-					<!-- Stats will be populated here -->
+				<div class="stat-card warning">
+					<div class="stat-header">
+						<div class="stat-title">Average Count</div>
+						<div class="stat-icon"><i class="fas fa-chart-bar"></i></div>
+					</div>
+					<div class="stat-value" id="average-count">0</div>
+					<div class="stat-label">Per project</div>
 				</div>
 
-				<h3>Your Projects</h3>
-				<div id="projects-list" class="projects-grid">
-					<!-- Projects will be populated here -->
+				<div class="stat-card secondary">
+					<div class="stat-header">
+						<div class="stat-title">Most Active</div>
+						<div class="stat-icon"><i class="fas fa-trophy"></i></div>
+					</div>
+					<div class="stat-value" id="most-active" style="font-size: 1.25rem;">—</div>
+					<div class="stat-label">Top performer</div>
 				</div>
 			</section>
 
-			<!-- Add Project Section -->
-			<section id="add-project" class="section hidden">
-				<h2>➕ Add New Project</h2>
-				<p style="margin-bottom: 20px; color: #6b7280">
-					Add a new project to track. This requires admin
-					authentication.
-				</p>
-
-				<form id="add-project-form">
-					<div class="form-group">
-						<label for="name">Project Name *</label>
-						<input
-							type="text"
-							id="name"
-							name="name"
-							required
-							placeholder="Enter project name"
-						/>
-					</div>
-
-					<div class="form-group">
-						<label for="description">Description</label>
-						<textarea
-							id="description"
-							name="description"
-							placeholder="Project description (optional)"
-						></textarea>
-					</div>
-
-					<div class="form-group">
-						<label for="url">Project URL</label>
-						<input
-							type="url"
-							id="url"
-							name="url"
-							placeholder="https://github.com/user/repo (optional)"
-						/>
-					</div>
-
-					<button type="submit" class="btn">Add Project</button>
-				</form>
+			<!-- Quick Actions -->
+			<section class="action-section fade-in-up">
+				<div class="action-header">
+					<h2 class="action-title">Quick Actions</h2>
+				</div>
+				<div class="action-grid">
+					<button class="btn btn-primary" onclick="ui.showAddProjectModal()">
+						<i class="fas fa-plus"></i> Add Project
+					</button>
+					<button class="btn btn-secondary" onclick="ui.showPingModal()">
+						<i class="fas fa-mouse-pointer"></i> Ping Project
+					</button>
+					<button class="btn btn-outline" onclick="ui.showStatsModal()">
+						<i class="fas fa-chart-pie"></i> View Statistics
+					</button>
+					<button class="btn btn-outline" onclick="ui.exportData()">
+						<i class="fas fa-download"></i> Export Data
+					</button>
+				</div>
 			</section>
 
-			<!-- Ping Project Section -->
-			<section id="ping-project" class="section hidden">
-				<h2>📡 Ping Project</h2>
-				<p style="margin-bottom: 20px; color: #6b7280">
-					Manually ping a project to increment its counter.
-				</p>
-
-				<form id="ping-project-form">
-					<div class="form-group">
-						<label for="project-name">Project Name *</label>
-						<input
-							type="text"
-							id="project-name"
-							name="project-name"
-							required
-							placeholder="Enter project name"
-						/>
+			<!-- Projects Grid -->
+			<section class="projects-section fade-in-up">
+				<div class="projects-header">
+					<h2 class="projects-title">Projects</h2>
+					<div class="search-box">
+						<input type="text" id="search-input" class="search-input" placeholder="Search projects..." />
+						<button class="btn btn-outline" onclick="ui.searchProjects()">
+							<i class="fas fa-search"></i>
+						</button>
 					</div>
-
-					<button type="submit" class="btn">Ping Project</button>
-				</form>
-			</section>
-
-			<!-- Webhooks Section -->
-			<section id="webhooks" class="section hidden">
-				<h2>🔗 Webhook Information</h2>
-				<p style="margin-bottom: 20px; color: #6b7280">
-					Use webhooks to automatically ping your projects from
-					external services. Click "Get Webhook" on any project in the
-					dashboard to generate webhook details.
-				</p>
-
-				<div
-					style="
-						background: #f3f4f6;
-						padding: 20px;
-						border-radius: 8px;
-					"
-				>
-					<h3>How to use webhooks:</h3>
-					<ol style="margin-left: 20px; margin-top: 10px">
-						<li>
-							Go to the Dashboard and click "Get Webhook" on any
-							project
-						</li>
-						<li>Copy the webhook URL and payload</li>
-						<li>
-							Configure your external service to send POST
-							requests to the webhook URL
-						</li>
-						<li>
-							Include your GitHub token in the Authorization
-							header
-						</li>
-						<li>
-							Your project counter will automatically increment
-							when pinged
-						</li>
-					</ol>
+				</div>
+				<div id="projects-container" class="projects-grid">
+					<!-- Projects will be loaded here -->
+				</div>
+				<div id="empty-state" class="empty-state hidden">
+					<i class="fas fa-folder-open"></i>
+					<h3>No projects found</h3>
+					<p>Get started by adding your first project.</p>
+					<button class="btn btn-primary" onclick="ui.showAddProjectModal()">
+						<i class="fas fa-plus"></i> Add Your First Project
+					</button>
 				</div>
 			</section>
 		</div>
 
-		<script type="module" src="src/main.ts"></script>
+		<!-- Include Scripts -->
+		<script type="module" src="./src/main.ts"></script>
 	</body>
 </html>

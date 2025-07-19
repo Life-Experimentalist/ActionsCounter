@@ -94,7 +94,7 @@ celerybeat.pid
 
 # Environments
 .env.local
-.env.*
+.env
 env/
 venv/
 ENV/
@@ -174,3 +174,4 @@ dist-ssr
 
 
 reference/
+.github/chatmodes/

@@ -184,25 +184,25 @@ https://YOUR_USERNAME.github.io/ActionsCounter
 
 ### 🔒 **Required Secrets** (Minimum Setup)
 
-| Secret Name | Required | Description | Example | Format Rules |
-|-------------|----------|-------------|---------|--------------|
+| Secret Name      | Required  | Description                      | Example            | Format Rules                              |
+| ---------------- | --------- | -------------------------------- | ------------------ | ----------------------------------------- |
 | `ADMIN_PASSWORD` | ✅ **YES** | Secure password for admin access | `MySecurePass123!` | ⚠️ **No quotes** - enter password directly |
 
 ### 🗄️ **Database Mode Secrets** (Optional - Only for STORAGE_MODE=2)
 
-| Secret Name | Required | Description | Example | Format Rules |
-|-------------|----------|-------------|---------|--------------|
-| `DB_HOST` | Only Mode 2 | PostgreSQL server hostname | `postgres.example.com` | ⚠️ **No quotes** - hostname only |
-| `DB_NAME` | Only Mode 2 | Database name | `actionscounter_db` | ⚠️ **No quotes** - database name only |
-| `DB_PORT` | Only Mode 2 | Database port | `5432` | ⚠️ **No quotes** - numbers only |
-| `DB_USER` | Only Mode 2 | Database username | `postgres` | ⚠️ **No quotes** - username only |
-| `DB_PASS` | Only Mode 2 | Database password | `your_db_password` | ⚠️ **No quotes** - password only |
-| `DB_SCHEMA` | Only Mode 2 | Database schema | `public` | ⚠️ **No quotes** - schema name only |
+| Secret Name | Required    | Description                | Example                | Format Rules                         |
+| ----------- | ----------- | -------------------------- | ---------------------- | ------------------------------------ |
+| `DB_HOST`   | Only Mode 2 | PostgreSQL server hostname | `postgres.example.com` | ⚠️ **No quotes** - hostname only      |
+| `DB_NAME`   | Only Mode 2 | Database name              | `actionscounter_db`    | ⚠️ **No quotes** - database name only |
+| `DB_PORT`   | Only Mode 2 | Database port              | `5432`                 | ⚠️ **No quotes** - numbers only       |
+| `DB_USER`   | Only Mode 2 | Database username          | `postgres`             | ⚠️ **No quotes** - username only      |
+| `DB_PASS`   | Only Mode 2 | Database password          | `your_db_password`     | ⚠️ **No quotes** - password only      |
+| `DB_SCHEMA` | Only Mode 2 | Database schema            | `public`               | ⚠️ **No quotes** - schema name only   |
 
 ### ⚙️ **Repository Variables** (Configuration)
 
-| Variable Name | Required | Description | Allowed Values | Format Rules |
-|---------------|----------|-------------|----------------|--------------|
+| Variable Name  | Required  | Description               | Allowed Values   | Format Rules                             |
+| -------------- | --------- | ------------------------- | ---------------- | ---------------------------------------- |
 | `STORAGE_MODE` | ✅ **YES** | Storage backend selection | `1`, `2`, or `3` | ⚠️ **No quotes** - enter number only: `1` |
 
 ---
@@ -451,7 +451,7 @@ If you renamed your fork to something other than "ActionsCounter", replace both 
 ### PowerShell Setup (Windows)
 ```powershell
 # Navigate to your local fork
-cd "C:\path\to\your\ActionsCounter"
+cd "ActionsCounter"
 
 # Install GitHub CLI if not already installed
 # winget install GitHub.cli
@@ -472,7 +472,7 @@ Write-Host "✅ Setup complete! Enable GitHub Pages manually in browser."
 ### Bash Setup (Linux/Mac)
 ```bash
 # Navigate to your local fork
-cd /path/to/your/ActionsCounter
+cd ActionsCounter
 
 # Install GitHub CLI if not already installed
 # brew install gh  # macOS
@@ -591,8 +591,8 @@ When reporting issues, include:
 4. 🛠️ **This setup guide** - You're already here!
 
 **Community Support:**
-1. 💬 **[GitHub Discussions](https://github.com/Life-Experimentalists/ActionsCounter/discussions)** - Ask questions, share tips
-2. 🐛 **[Report Issues](https://github.com/Life-Experimentalists/ActionsCounter/issues/new/choose)** - Bug reports and feature requests
+1. 💬 **[GitHub Discussions](https://github.com/Life-Experimentalist/ActionsCounter/discussions)** - Ask questions, share tips
+2. 🐛 **[Report Issues](https://github.com/Life-Experimentalist/ActionsCounter/issues/new/choose)** - Bug reports and feature requests
 3. 💡 **[Contributing Guide](./docs/contributing.md)** - Help improve the project
 
 ### ⚡ **Quick Test Setup**
@@ -618,7 +618,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Counter
-        uses: Life-Experimentalists/ActionsCounter@main
+        uses: Life-Experimentalist/ActionsCounter@main
         with:
           action: 'increment'
           project: 'test-project'

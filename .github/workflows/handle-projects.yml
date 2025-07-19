@@ -550,9 +550,9 @@ jobs:
                     PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
                     echo "--- DEBUG: Decoded PROJECTS_JSON ---"
                     echo "$PROJECTS_JSON"
-                    if ! echo "$PROJECTS_JSON" | jq . >/dev/null 2>jq_error.log; then
-                      echo "⚠️ PROJECTS_DATA invalid, reinitializing"
-                      cat jq_error.log
+                    # Ensure PROJECTS_JSON is valid and not empty
+                    if [ -z "$PROJECTS_JSON" ] || ! echo "$PROJECTS_JSON" | jq . >/dev/null 2>&1; then
+                      echo "⚠️ PROJECTS_DATA missing or invalid, initializing to {\"projects\":{}}"
                       PROJECTS_JSON='{"projects":{}}'
                     fi
                   else

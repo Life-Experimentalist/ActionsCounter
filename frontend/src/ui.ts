@@ -13,6 +13,7 @@ export class UI {
 	private api: ActionsCounter;
 	private storageMode: string = "unknown";
 	private analyticsData: any = null;
+	public projectsData: Project[] = [];
 
 	constructor(
 		repoOwner: string,
@@ -202,7 +203,7 @@ export class UI {
 
 		container.innerHTML = projects
 			.map(
-				(project) => `
+				(project: Project) => `
 			<div class="project-card fade-in-up" onclick="ui.showProjectDetails('${this.escapeHtml(
 				project.name
 			)}')">
@@ -340,6 +341,18 @@ export class UI {
 		this.showModal(modal);
 	}
 
+	// --- Analytics and Project Existence Checks Moved to Frontend ---
+
+	// Utility: Check if project name is valid and not empty
+	private isValidProjectName(name: string): boolean {
+		return typeof name === "string" && name.trim().length > 0;
+	}
+
+	// Utility: Check if project exists in the current list
+	private projectExists(name: string): boolean {
+		return this.projectsData.some((p) => p.name === name);
+	}
+
 	/**
 	 * Handle add project form submission
 	 */
@@ -354,8 +367,12 @@ export class UI {
 		const description = formData.get("description") as string;
 		const password = formData.get("password") as string;
 
-		if (!name.trim() || !password.trim()) {
+		if (!this.isValidProjectName(name) || !password.trim()) {
 			this.showMessage("Please fill in all required fields", "error");
+			return;
+		}
+		if (this.projectExists(name)) {
+			this.showMessage(`Project '${name}' already exists!`, "error");
 			return;
 		}
 
@@ -446,9 +463,19 @@ export class UI {
 	 * Ping project directly (called from project card)
 	 */
 	public async pingProject(projectName: string): Promise<void> {
+		if (!this.isValidProjectName(projectName)) {
+			this.showMessage(
+				"Project name is required for ping action",
+				"error"
+			);
+			return;
+		}
+		if (!this.projectExists(projectName)) {
+			this.showMessage(`Project '${projectName}' not found!`, "error");
+			return;
+		}
 		try {
 			this.showMessage("Pinging project...", "info");
-
 			await this.api.pingProject(projectName);
 			this.showMessage(
 				`Project "${projectName}" pinged successfully!`,
@@ -530,8 +557,12 @@ export class UI {
 		const description = formData.get("description") as string;
 		const password = formData.get("password") as string;
 
-		if (!password.trim()) {
-			this.showMessage("Please enter the admin password", "error");
+		if (!this.isValidProjectName(name) || !password.trim()) {
+			this.showMessage("Please fill in all required fields", "error");
+			return;
+		}
+		if (!this.projectExists(name)) {
+			this.showMessage(`Project '${name}' not found!`, "error");
 			return;
 		}
 
@@ -694,36 +725,6 @@ export class UI {
 			console.error("Error testing webhook:", error);
 			this.showMessage(`Webhook test failed: ${error}`, "error");
 		}
-	}
-
-	/**
-	 * Get JavaScript sample code
-	 */
-	private getJavaScriptSample(url: string): string {
-		return `// Using fetch API with GitHub token
-const response = await fetch('${url}', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_GITHUB_TOKEN',
-    'Accept': 'application/vnd.github.v3+json',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    event_type: 'ping',
-    client_payload: { project_name: 'PROJECT_NAME' }
-  })
-});`;
-	}
-
-	/**
-	 * Get cURL sample command
-	 */
-	private getCurlSample(url: string): string {
-		return `curl -X POST "${url}" \\
-  -H "Authorization: Bearer YOUR_GITHUB_TOKEN" \\
-  -H "Accept: application/vnd.github.v3+json" \\
-  -H "Content-Type: application/json" \\
-  -d '{"event_type":"ping","client_payload":{"project_name":"PROJECT_NAME"}}'`;
 	}
 
 	/**
@@ -909,39 +910,55 @@ const response = await fetch('${url}', {
 	/**
 	 * Show project details
 	 */
-	private showProjectDetails(projectName: string): void {
-		const project = this.projectsData.find((p) => p.name === projectName);
+	public showProjectDetails(projectName: string): void {
+		const project = this.projectsData.find(
+			(p: Project) => p.name === projectName
+		);
 		if (!project) {
 			this.showMessage("Project not found", "error");
 			return;
 		}
-
-		// Show project details including alias and webhook info
 		const detailsModal = document.getElementById("project-details-modal");
 		if (!detailsModal) return;
-		detailsModal.querySelector(".project-name").textContent = project.name;
-		detailsModal.querySelector(".project-alias").textContent =
-			project.alias || "-";
-		detailsModal.querySelector(".project-url").textContent =
-			project.url || "-";
-		detailsModal.querySelector(".project-count").textContent = String(
-			project.count
-		);
-		// Show webhook info if alias exists
-		const webhookSection = detailsModal.querySelector(".webhook-info");
+		const nameEl = detailsModal.querySelector(
+			".project-name"
+		) as HTMLElement | null;
+		if (nameEl) nameEl.textContent = project.name;
+		const aliasEl = detailsModal.querySelector(
+			".project-alias"
+		) as HTMLElement | null;
+		if (aliasEl) aliasEl.textContent = project.alias || "-";
+		const urlEl = detailsModal.querySelector(
+			".project-url"
+		) as HTMLElement | null;
+		if (urlEl) urlEl.textContent = (project as any).url || "-";
+		const countEl = detailsModal.querySelector(
+			".project-count"
+		) as HTMLElement | null;
+		if (countEl) countEl.textContent = String(project.count);
+		const webhookSection = detailsModal.querySelector(
+			".webhook-info"
+		) as HTMLElement | null;
 		if (project.alias && webhookSection) {
 			webhookSection.classList.remove("hidden");
-			webhookSection.querySelector(".webhook-url").textContent =
-				this.generateWebhookUrl(project.alias);
-			webhookSection.querySelector(".webhook-mode").textContent =
-				this.storageMode;
+			const webhookUrlEl = webhookSection.querySelector(
+				".webhook-url"
+			) as HTMLElement | null;
+			if (webhookUrlEl)
+				webhookUrlEl.textContent = this.generateWebhookUrl(
+					project.alias
+				);
+			const webhookModeEl = webhookSection.querySelector(
+				".webhook-mode"
+			) as HTMLElement | null;
+			if (webhookModeEl) webhookModeEl.textContent = this.storageMode;
 		} else if (webhookSection) {
 			webhookSection.classList.add("hidden");
 		}
-		// Show storage mode
-		detailsModal.querySelector(".storage-mode").textContent =
-			this.storageMode;
-		// Show modal
+		const storageModeEl = detailsModal.querySelector(
+			".storage-mode"
+		) as HTMLElement | null;
+		if (storageModeEl) storageModeEl.textContent = this.storageMode;
 		detailsModal.classList.add("open");
 	}
 
@@ -950,7 +967,7 @@ const response = await fetch('${url}', {
 	 */
 	private generateWebhookUrl(alias: string): string {
 		// Example webhook URL (customize as needed)
-		return `https://api.github.com/repos/${this.api.repoOwner}/${this.api.repoName}/dispatches?alias=${alias}`;
+		return `https://api.github.com/repos/${this.api["repoOwner"]}/${this.api["repoName"]}/dispatches?alias=${alias}`;
 	}
 }
 

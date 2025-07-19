@@ -7,7 +7,7 @@
 # - Required secrets: ADMIN_PASSWORD, PAT_TOKEN, DB_* (for database mode)
 # - Required variables: STORAGE_MODE (repository variable, not secret)
 #
-name: "Handle Projects (Dual Mode)"
+name: "Handle Projects"
 
 # NOTE: The lint errors about "Context access might be invalid" for secrets are expected
 # when no GitHub repository exists yet. These will resolve once the workflow is deployed
@@ -15,11 +15,19 @@ name: "Handle Projects (Dual Mode)"
 
 on:
     repository_dispatch:
-        types: [ping, increment, decrement, add, remove, set, get, list, stats]
+        types: [ping, increment, decrement, add, remove, set, get, list]
     workflow_dispatch:
         inputs:
             action:
-                description: "Action to perform"
+                description: |
+                    Action to perform. Options:
+                      - increment: Increase the count for a project by 1 (creates project if not exists)
+                      - decrement: Decrease the count for a project by 1 (minimum 0)
+                      - add: Add a new project with description and URL
+                      - remove: Delete a project and all its data
+                      - list: List all projects with details
+                      - get: Get details for a specific project
+                      - set: Edit any detail of a project (name, description, url, count, etc.) including renaming the project
                 required: true
                 default: "increment"
                 type: choice
@@ -29,23 +37,26 @@ on:
                     - add
                     - remove
                     - list
-                    - stats
                     - get
                     - set
             project_name:
-                description: "Project name (required for increment/decrement/add/remove/get/set)"
+                description: "Current project name (required for increment/decrement/add/remove/get/set)"
+                required: false
+                type: string
+            new_name:
+                description: "New project name (for set action, to rename the project)"
                 required: false
                 type: string
             description:
-                description: "Project description (optional for add action)"
+                description: "Project description (optional for add/set action)"
                 required: false
                 type: string
             url:
-                description: "Project URL (optional for add action)"
+                description: "Project URL (optional for add/set action)"
                 required: false
                 type: string
             count_value:
-                description: "Count value (required for set action)"
+                description: "Count value (optional for set action)"
                 required: false
                 type: number
             password:
@@ -393,24 +404,36 @@ jobs:
                         exit 1
                       fi
 
-                      if [ -z "${{ github.event.inputs.count_value }}" ]; then
-                        echo "❌ Count value is required for set action"
-                        exit 1
+                      # Prepare SET SQL statement
+                      SQL="UPDATE ${{ secrets.DB_SCHEMA }}.projects SET updated_at = CURRENT_TIMESTAMP"
+
+                      # Append fields to update based on inputs
+                      if [ -n "${{ github.event.inputs.new_name }}" ]; then
+                        SQL="$SQL, name = '${{ github.event.inputs.new_name }}'"
+                      fi
+                      if [ -n "${{ github.event.inputs.description }}" ]; then
+                        SQL="$SQL, description = '${{ github.event.inputs.description }}'"
+                      fi
+                      if [ -n "${{ github.event.inputs.url }}" ]; then
+                        SQL="$SQL, url = '${{ github.event.inputs.url }}'"
+                      fi
+                      if [ -n "${{ github.event.inputs.count_value }}" ]; then
+                        SQL="$SQL, count = ${{ github.event.inputs.count_value }}"
                       fi
 
-                      RESULT=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "
-                        UPDATE ${{ secrets.DB_SCHEMA }}.projects
-                        SET count = ${{ github.event.inputs.count_value }}, updated_at = CURRENT_TIMESTAMP
-                        WHERE name = '${{ github.event.inputs.project_name }}'
-                        RETURNING count;
-                      " | xargs)
+                      # Remove trailing comma and add WHERE clause
+                      SQL="$SQL WHERE name = '${{ github.event.inputs.project_name }}' RETURNING *;"
+
+                      # Execute SQL
+                      RESULT=$(psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -t -c "$SQL" | xargs)
 
                       if [ -z "$RESULT" ]; then
                         echo "❌ Project '${{ github.event.inputs.project_name }}' not found"
                         exit 1
                       fi
 
-                      echo "✅ Project '${{ github.event.inputs.project_name }}' count set to: $RESULT"
+                      echo "✅ Project '${{ github.event.inputs.project_name }}' updated successfully"
+                      echo "📄 New Details: $RESULT"
                       ;;
 
                     "list")
@@ -422,26 +445,6 @@ jobs:
                       "
                       ;;
 
-                    "stats")
-                      echo "📈 Project Statistics:"
-                      psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
-                        SELECT
-                          COUNT(*) as total_projects,
-                          SUM(count) as total_count,
-                          AVG(count) as average_count,
-                          MAX(count) as max_count,
-                          MIN(count) as min_count
-                        FROM ${{ secrets.DB_SCHEMA }}.projects;
-                      "
-
-                      echo -e "\n🏆 Top 5 Projects:"
-                      psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "
-                        SELECT name, count
-                        FROM ${{ secrets.DB_SCHEMA }}.projects
-                        ORDER BY count DESC
-                        LIMIT 5;
-                      "
-                      ;;
                   esac
 
             # GITHUB VARIABLES MODE JOBS
@@ -488,7 +491,7 @@ jobs:
                     "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
 
                   if echo "$response" | grep -q '"value"'; then
-                    ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
+                    ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^"]*"' | cut -d'"' -f4)
 
                     # Try to decode from base64 first, fallback to direct JSON if that fails
                     PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
@@ -630,28 +633,28 @@ jobs:
                         echo "❌ Project name is required for set action"
                         exit 1
                       fi
-                      if [ -z "${{ github.event.inputs.count_value }}" ]; then
-                        echo "❌ Count value is required for set action"
-                        exit 1
+                      # Prepare SET JSON statement
+                      SET_JSON=".projects[\"${{ github.event.inputs.project_name }}\"]"
+
+                      # Add fields to update based on inputs
+                      if [ -n "${{ github.event.inputs.new_name }}" ]; then
+                        SET_JSON="$SET_JSON | .name = \"${{ github.event.inputs.new_name }}\""
+                      fi
+                      if [ -n "${{ github.event.inputs.description }}" ]; then
+                        SET_JSON="$SET_JSON | .description = \"${{ github.event.inputs.description }}\""
+                      fi
+                      if [ -n "${{ github.event.inputs.url }}" ]; then
+                        SET_JSON="$SET_JSON | .url = \"${{ github.event.inputs.url }}\""
+                      fi
+                      if [ -n "${{ github.event.inputs.count_value }}" ]; then
+                        SET_JSON="$SET_JSON | .count = ${{ github.event.inputs.count_value }}"
                       fi
 
-                      PROJECT_NAME="${{ github.event.inputs.project_name }}"
-                      COUNT_VALUE="${{ github.event.inputs.count_value }}"
-
+                      # Update the project details
                       sudo apt-get update && sudo apt-get install -y jq
+                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq "$SET_JSON")
 
-                      # Check if project exists
-                      if ! echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
-                        echo "❌ Project '$PROJECT_NAME' not found"
-                        exit 1
-                      fi
-
-                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --argjson count "$COUNT_VALUE" '
-                        .projects[$name].count = $count |
-                        .projects[$name].updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
-                      ')
-
-                      echo "✅ Project '$PROJECT_NAME' count set to: $COUNT_VALUE"
+                      echo "✅ Project '${{ github.event.inputs.project_name }}' updated successfully"
                       PROJECTS_JSON="$NEW_JSON"
                       ;;
 
@@ -660,30 +663,10 @@ jobs:
                       echo "📂 All Projects:"
                       echo "$PROJECTS_JSON" | jq '.projects'
                       ;;
-
-                    "stats")
-                      sudo apt-get update && sudo apt-get install -y jq
-
-                      TOTAL_PROJECTS=$(echo "$PROJECTS_JSON" | jq '.projects | length')
-                      TOTAL_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | add // 0')
-                      AVG_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | if length > 0 then (add / length) else 0 end | . * 100 | round / 100')
-                      MAX_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | max // 0')
-                      MIN_COUNT=$(echo "$PROJECTS_JSON" | jq '[.projects[].count] | min // 0')
-
-                      echo "📊 GitHub Variables Statistics:"
-                      echo "🔢 Total Projects: $TOTAL_PROJECTS"
-                      echo "🎯 Total Count: $TOTAL_COUNT"
-                      echo "📈 Average Count: $AVG_COUNT"
-                      echo "🏆 Max Count: $MAX_COUNT"
-                      echo "📉 Min Count: $MIN_COUNT"
-
-                      echo -e "\n🏆 Top 5 Projects:"
-                      echo "$PROJECTS_JSON" | jq -r '.projects | to_entries | sort_by(-.value.count) | limit(5; .[]) | "\(.key): \(.value.count)"'
-                      ;;
                   esac
 
                   # Update GitHub Variables with new data
-                  if [ "${{ github.event.inputs.action }}" != "list" ] && [ "${{ github.event.inputs.action }}" != "stats" ] && [ "${{ github.event.inputs.action }}" != "get" ]; then
+                  if [ "${{ github.event.inputs.action }}" != "list" ] && [ "${{ github.event.inputs.action }}" != "get" ]; then
                     echo "💾 Updating GitHub Variables..."
                     echo "$PROJECTS_JSON" > /tmp/projects_data.json
                     ENCODED_JSON=$(echo "$PROJECTS_JSON" | base64 -w 0)

@@ -540,11 +540,19 @@ jobs:
                     -H "Accept: application/vnd.github+json" \
                     "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
 
+                  echo "--- DEBUG: Raw PROJECTS_DATA variable response ---"
+                  echo "$response"
+
                   if echo "$response" | grep -q '"value"'; then
                     ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
+                    echo "--- DEBUG: Encoded PROJECTS_DATA ---"
+                    echo "$ENCODED_DATA"
                     PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
-                    if ! echo "$PROJECTS_JSON" | jq . >/dev/null 2>&1; then
+                    echo "--- DEBUG: Decoded PROJECTS_JSON ---"
+                    echo "$PROJECTS_JSON"
+                    if ! echo "$PROJECTS_JSON" | jq . >/dev/null 2>jq_error.log; then
                       echo "⚠️ PROJECTS_DATA invalid, reinitializing"
+                      cat jq_error.log
                       PROJECTS_JSON='{"projects":{}}'
                     fi
                   else
@@ -569,41 +577,41 @@ jobs:
                       if echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
                         echo "⚠️ Project '$PROJECT_NAME' already exists. Skipping add."
                         exit 0
+                      else
+                        # Generate random alias and auth_token
+                        ALIAS="proj_$(openssl rand -hex 8)"
+                        AUTH_TOKEN="pauth_$(openssl rand -hex 12)"
+                        AUTH_HASH=$(echo -n "$AUTH_TOKEN" | sha256sum | awk '{print $1}')
+
+                        sudo apt-get update && sudo apt-get install -y jq
+                        NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --arg desc "$DESCRIPTION" --arg url "$URL" --arg alias "$ALIAS" --arg auth_hash "$AUTH_HASH" '
+                          .projects[$name] = {
+                            "count": 0,
+                            "description": $desc,
+                            "url": $url,
+                            "alias": $alias,
+                            "auth_hash": $auth_hash,
+                            "created_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ")),
+                            "updated_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
+                          }
+                        ')
+
+                        echo "--- DEBUG: Before add ---"
+                        cat /tmp/projects_before.json
+                        echo "--- DEBUG: After add ---"
+                        echo "$NEW_JSON"
+
+                        # After add, compare before/after
+                        if diff -q <(cat /tmp/projects_before.json) <(echo "$NEW_JSON") >/dev/null; then
+                          echo "❌ No change detected in PROJECTS_DATA after add operation"
+                          exit 1
+                        fi
+
+                        echo "✅ Project '$PROJECT_NAME' added successfully"
+                        echo "🔑 Project Alias: $ALIAS"
+                        echo "🔐 Project Auth Token (save this securely, it will not be shown again): $AUTH_TOKEN"
+                        PROJECTS_JSON="$NEW_JSON"
                       fi
-
-                      # Generate random alias and auth_token
-                      ALIAS="proj_$(openssl rand -hex 8)"
-                      AUTH_TOKEN="pauth_$(openssl rand -hex 12)"
-                      AUTH_HASH=$(echo -n "$AUTH_TOKEN" | sha256sum | awk '{print $1}')
-
-                      sudo apt-get update && sudo apt-get install -y jq
-                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --arg desc "$DESCRIPTION" --arg url "$URL" --arg alias "$ALIAS" --arg auth_hash "$AUTH_HASH" '
-                        .projects[$name] = {
-                          "count": 0,
-                          "description": $desc,
-                          "url": $url,
-                          "alias": $alias,
-                          "auth_hash": $auth_hash,
-                          "created_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ")),
-                          "updated_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
-                        }
-                      ')
-
-                      echo "--- DEBUG: Before add ---"
-                      cat /tmp/projects_before.json
-                      echo "--- DEBUG: After add ---"
-                      echo "$NEW_JSON"
-
-                      # After add, compare before/after
-                      if diff -q <(cat /tmp/projects_before.json) <(echo "$NEW_JSON") >/dev/null; then
-                        echo "❌ No change detected in PROJECTS_DATA after add operation"
-                        exit 1
-                      fi
-
-                      echo "✅ Project '$PROJECT_NAME' added successfully"
-                      echo "🔑 Project Alias: $ALIAS"
-                      echo "🔐 Project Auth Token (save this securely, it will not be shown again): $AUTH_TOKEN"
-                      PROJECTS_JSON="$NEW_JSON"
                       ;;
 
                     "increment")
@@ -908,7 +916,9 @@ jobs:
 
             - name: Echo Final Projects Data
               run: |
-                  echo "\n===== FINAL PROJECTS DATA SUMMARY ====="
+                  echo "🔍 Finalizing projects data summary..."
+                  echo ""
+                  echo "===== FINAL PROJECTS DATA SUMMARY ====="
                   MODE="${{ steps.mode.outputs.mode }}"
                   if [ "$MODE" = "database" ]; then
                     export PGPASSWORD="${{ secrets.DB_PASS }}"

@@ -86,6 +86,7 @@ jobs:
                     # Workflow dispatch (manual UI) inputs
                     ACTION="${{ github.event.inputs.action }}"
                     PROJECT_NAME="${{ github.event.inputs.project_name }}"
+                    NEW_NAME="${{ github.event.inputs.new_name }}"
                     DESCRIPTION="${{ github.event.inputs.description }}"
                     URL="${{ github.event.inputs.url }}"
                     COUNT_VALUE="${{ github.event.inputs.count_value }}"
@@ -94,14 +95,22 @@ jobs:
 
                   echo "action=$ACTION" >> $GITHUB_OUTPUT
                   echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+                  echo "new_name=$NEW_NAME" >> $GITHUB_OUTPUT
                   echo "description=$DESCRIPTION" >> $GITHUB_OUTPUT
                   echo "url=$URL" >> $GITHUB_OUTPUT
                   echo "count_value=$COUNT_VALUE" >> $GITHUB_OUTPUT
                   echo "password=$PASSWORD" >> $GITHUB_OUTPUT
 
-                  echo "Event type: ${{ github.event_name }}"
+                  echo "--- Workflow Input Variables ---"
                   echo "Action: $ACTION"
-                  echo "Project: $PROJECT_NAME"
+                  echo "Project Name: $PROJECT_NAME"
+                  echo "New Name: $NEW_NAME"
+                  echo "Description: $DESCRIPTION"
+                  echo "URL: $URL"
+                  echo "Count Value: $COUNT_VALUE"
+                  echo "Password: $PASSWORD"
+                  echo "Event type: ${{ github.event_name }}"
+                  echo "--------------------------------"
 
             - name: Determine Storage Mode
               id: mode
@@ -685,6 +694,10 @@ jobs:
                     echo "✅ Projects data updated in GitHub Variables (base64 encoded)"
                   fi
 
+                  echo "📊 Current Projects Data:"
+                  echo "$PROJECTS_JSON" | jq '.projects'
+                  echo "✅ GitHub Variables operations completed successfully"
+
             # REPOSITORY COMMITS MODE JOBS
             - name: Repository Commits - Checkout
               if: steps.mode.outputs.mode == 'repository_commits'
@@ -807,3 +820,32 @@ jobs:
                     -d "{\"name\":\"ANALYTICS_DATA\",\"value\":\"$ANALYTICS\"}"
 
                   echo "✅ Analytics stored in GitHub Variables"
+
+            - name: Echo Final Projects Data
+              run: |
+                  echo "\n===== FINAL PROJECTS DATA SUMMARY ====="
+                  MODE="${{ steps.mode.outputs.mode }}"
+                  if [ "$MODE" = "database" ]; then
+                    export PGPASSWORD="${{ secrets.DB_PASS }}"
+                    if psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "\dt" > /dev/null 2>&1; then
+                      echo "Database connection successful. Showing up to 20 most recently updated projects:"
+                      psql -h "${{ secrets.DB_HOST }}" -p "${{ secrets.DB_PORT }}" -U "${{ secrets.DB_USER }}" -d "${{ secrets.DB_NAME }}" -c "SELECT name, description, url, alias, count, updated_at FROM ${{ secrets.DB_SCHEMA }}.projects ORDER BY updated_at DESC LIMIT 20;"
+                    else
+                      echo "❌ Database not connected or credentials invalid."
+                    fi
+                  elif [ "$MODE" = "github_variables" ]; then
+                    response=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+                      -H "Accept: application/vnd.github+json" \
+                      "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
+                    if echo "$response" | grep -q '"value"'; then
+                      ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
+                      PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
+                      echo "Showing up to 20 most recently updated projects:"
+                      echo "$PROJECTS_JSON" | jq '.projects | to_entries | sort_by(-.value.updated_at) | .[:20] | map({name: .key} + .value)' || echo "⚠️ No projects found or invalid JSON."
+                    else
+                      echo "❌ PROJECTS_DATA variable is empty or not found."
+                    fi
+                  else
+                    echo "⚠️ Storage mode is unknown or not supported for summary."
+                  fi
+                  echo "===== END OF PROJECTS DATA SUMMARY =====\n"

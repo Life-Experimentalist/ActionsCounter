@@ -772,8 +772,8 @@ jobs:
                       -d "{\"name\":\"PROJECTS_DATA\",\"value\":\"$ENCODED_JSON\"}")
                     RESPONSE_BODY=$(echo "$PATCH_RESPONSE" | head -n -1)
                     RESPONSE_CODE=$(echo "$PATCH_RESPONSE" | tail -n1)
-                    if [ "$RESPONSE_CODE" -ne 200 ]; then
-                      echo "❌ PATCH failed, response: $RESPONSE_BODY"
+                    if [ "$RESPONSE_CODE" -ne 200 ] && [ "$RESPONSE_CODE" -ne 204 ]; then
+                      echo "❌ PATCH failed (HTTP $RESPONSE_CODE), response: $RESPONSE_BODY"
                       exit 1
                     fi
                     # Reload and check if variable is empty after add
@@ -929,6 +929,7 @@ jobs:
                   echo "✅ Analytics stored in GitHub Variables"
 
             - name: Echo Final Projects Data
+              if: always()
               run: |
                   echo "🔍 Finalizing projects data summary..."
                   echo ""

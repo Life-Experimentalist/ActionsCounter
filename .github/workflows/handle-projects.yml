@@ -577,26 +577,22 @@ jobs:
                   echo "--- DEBUG: Raw PROJECTS_DATA variable response ---"
                   echo "$response"
 
-                  if echo "$response" | grep -q '"value"'; then
-                    ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4 | tr -d '\n\r ')
-                    echo "--- DEBUG: Encoded PROJECTS_DATA ---"
-                    echo "$ENCODED_DATA"
-                    # Use handler for robust decode
-                    PROJECTS_JSON=$(decode_projects_data "$ENCODED_DATA")
-                    # Clean up: remove any leading/trailing whitespace and blank lines
-                    PROJECTS_JSON=$(echo "$PROJECTS_JSON" | sed 's/^ *//;s/ *$//' | sed '/^$/d')
-                    echo "--- DEBUG: Decoded PROJECTS_JSON ---"
+                  # Use jq to robustly extract the value, even from pretty-printed JSON
+                  ENCODED_DATA=$(echo "$response" | jq -r '.value // empty')
+                  echo "--- DEBUG: Encoded PROJECTS_DATA ---"
+                  echo "$ENCODED_DATA"
+                  # Use handler for robust decode
+                  PROJECTS_JSON=$(decode_projects_data "$ENCODED_DATA")
+                  # Clean up: remove any leading/trailing whitespace and blank lines
+                  PROJECTS_JSON=$(echo "$PROJECTS_JSON" | sed 's/^ *//;s/ *$//' | sed '/^$/d')
+                  echo "--- DEBUG: Decoded PROJECTS_JSON ---"
+                  echo "$PROJECTS_JSON"
+                  # Ensure PROJECTS_JSON is valid and not empty
+                  if [ -z "$PROJECTS_JSON" ] || ! echo "$PROJECTS_JSON" | jq . >/dev/null 2>&1; then
+                    echo "⚠️ PROJECTS_DATA missing or invalid, initializing to {\"projects\":{}}"
+                    echo "DEBUG: jq error code: $?"
+                    echo "DEBUG: Raw decoded PROJECTS_JSON:"
                     echo "$PROJECTS_JSON"
-                    # Ensure PROJECTS_JSON is valid and not empty
-                    if [ -z "$PROJECTS_JSON" ] || ! echo "$PROJECTS_JSON" | jq . >/dev/null 2>&1; then
-                      echo "⚠️ PROJECTS_DATA missing or invalid, initializing to {\"projects\":{}}"
-                      echo "DEBUG: jq error code: $?"
-                      echo "DEBUG: Raw decoded PROJECTS_JSON:"
-                      echo "$PROJECTS_JSON"
-                      PROJECTS_JSON='{"projects":{}}'
-                    fi
-                  else
-                    echo "⚠️ PROJECTS_DATA missing, initializing"
                     PROJECTS_JSON='{"projects":{}}'
                   fi
 

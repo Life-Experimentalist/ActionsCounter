@@ -14,7 +14,6 @@
 // 	}
 // }
 
-import { UI } from "./ui.js";
 
 // Configuration - Environment variables or build-time injection
 let REPO_OWNER = import.meta.env.REPO_OWNER || "__REPO_OWNER_PLACEHOLDER__";
@@ -80,28 +79,28 @@ let analyticsData: any = null;
 
 // Initialize the application
 document.addEventListener("DOMContentLoaded", async () => {
-	console.log("🚀 ActionsCounter (Triple Mode) starting...");
+  console.log("🚀 ActionsCounter (Triple Mode) starting...");
 
-	// Detect repository information dynamically
-	detectRepositoryInfo();
+  // Detect repository information dynamically
+  detectRepositoryInfo();
 
-	// Detect storage mode from environment variables or analytics
-	await detectStorageMode();
+  // Detect storage mode from environment variables or analytics
+  await detectStorageMode();
 
-	// Create global UI instance
-	(window as any).ui = new UI(
-		REPO_OWNER,
-		REPO_NAME,
-		storageMode,
-		analyticsData
-	);
+  // Create global UI instance
+  // (window as any).ui = new UI(
+  // 	REPO_OWNER,
+  // 	REPO_NAME,
+  // 	storageMode,
+  // 	analyticsData
+  // );
 
-	console.log(
-		`✅ ActionsCounter initialized in ${storageMode.toUpperCase()} mode`
-	);
+  console.log(
+    `✅ ActionsCounter initialized in ${storageMode.toUpperCase()} mode`
+  );
 
-	// Show configuration notice if this is the first run
-	showConfigurationNotice();
+  // Show configuration notice if this is the first run
+  showConfigurationNotice();
 });
 
 async function detectStorageMode() {

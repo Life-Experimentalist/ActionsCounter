@@ -28,7 +28,6 @@ function loadConfig() {
 }
 
 // --- UI Elements ---
-const root = document.getElementById("app") || document.body;
 
 function renderConfigForm() {
   return `
@@ -88,42 +87,41 @@ function renderDashboard() {
   `;
 }
 
-async function fetchProjects() {
-  await fetchStorageMode();
-  if (storageMode === 1) {
-    // GitHub Variables
-    const { repo, pat } = getConfig();
-    if (!repo || !pat) return [];
-    const [owner, repoName] = repo.split("/");
-    const url = `https://api.github.com/repos/${owner}/${repoName}/actions/variables/PROJECTS_DATA`;
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${pat}`,
-        Accept: "application/vnd.github+json",
-      },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!data.value) return [];
-    try {
-      const decoded = atob(data.value);
-      const json = JSON.parse(decoded);
-      return Object.entries(json.projects || {});
-    } catch {
-      return [];
-    }
-  } else if (storageMode === 2) {
-    // Database mode (placeholder)
-    showMessage("Database mode: UI integration not implemented.", "error");
-    return [];
-  } else if (storageMode === 3) {
-    showMessage(
-      "Repository Commits mode is not supported in the UI yet.",
-      "error"
-    );
+let projectsCache: { data: any[]; timestamp: number } | null = null;
+const CACHE_DURATION_MS = 5000;
+
+async function fetchProjects(forceRefresh = false) {
+  const now = Date.now();
+  if (
+    !forceRefresh &&
+    projectsCache &&
+    now - projectsCache.timestamp < CACHE_DURATION_MS
+  ) {
+    return projectsCache.data;
+  }
+  // Always fetch from GitHub Actions (ignore storageMode)
+  const { repo, pat } = getConfig();
+  if (!repo || !pat) return [];
+  const [owner, repoName] = repo.split("/");
+  const url = `https://api.github.com/repos/${owner}/${repoName}/actions/variables/PROJECTS_DATA`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${pat}`,
+      Accept: "application/vnd.github+json",
+    },
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  if (!data.value) return [];
+  try {
+    const decoded = atob(data.value);
+    const json = JSON.parse(decoded);
+    const result = Object.entries(json.projects || {});
+    projectsCache = { data: result, timestamp: now };
+    return result;
+  } catch {
     return [];
   }
-  return [];
 }
 
 async function updateStorageModeLabel() {
@@ -194,14 +192,23 @@ function setupHandlers() {
     render();
     setupHandlers();
     updateStorageModeLabel();
-    updateProjectsList();
+    updateProjectsList(true);
   });
 
-  document
-    .getElementById("refresh-projects")
-    ?.addEventListener("click", async () => {
-      await updateProjectsList();
+  const refreshBtn = document.getElementById("refresh-projects");
+  if (refreshBtn) {
+    let cooldown = false;
+    refreshBtn.addEventListener("click", async () => {
+      if (cooldown) return;
+      cooldown = true;
+      refreshBtn.setAttribute("disabled", "true");
+      await updateProjectsList(true);
+      setTimeout(() => {
+        cooldown = false;
+        refreshBtn.removeAttribute("disabled");
+      }, CACHE_DURATION_MS);
     });
+  }
 
   document
     .getElementById("add-project-form")
@@ -218,11 +225,11 @@ function setupHandlers() {
     });
 }
 
-async function updateProjectsList() {
+async function updateProjectsList(forceRefresh = false) {
   const list = document.getElementById("projects-list");
   if (!list) return;
   list.innerHTML = "Loading...";
-  const projects = await fetchProjects();
+  const projects = await fetchProjects(forceRefresh);
   if (!projects.length) {
     list.innerHTML = "<em>No projects found.</em>";
     return;
@@ -353,3 +360,25 @@ async function triggerAction(action: string, params: any) {
     showMessage(`Error: ${e.message || e}`, "error");
   }
 }
+
+// UI is an object, not a class. Use as: import { UI } from './ui'; or import UI from './ui';
+const UI = {
+  setConfig,
+  getConfig,
+  loadConfig,
+  renderConfigForm,
+  getWebhookUrl,
+  fetchStorageMode,
+  renderDashboard,
+  fetchProjects,
+  updateStorageModeLabel,
+  showMessage,
+  promptPassword,
+  sanitize,
+  render,
+  setupHandlers,
+  updateProjectsList,
+  triggerAction,
+};
+
+export default UI;

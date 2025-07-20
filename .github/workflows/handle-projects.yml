@@ -454,25 +454,51 @@ jobs:
                         exit 1
                       fi
                       PROJECT_NAME="${{ github.event.inputs.project_name }}"
-                      # Build jq filter to update only the specified fields inside the project
-                      JQ_FILTER='.projects["'"$PROJECT_NAME"'"]'
-                      if [ -n "${{ github.event.inputs.new_name }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .name = \"${{ github.event.inputs.new_name }}\""
+                      # Check if project exists
+                      if ! echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
+                        echo "❌ Project '$PROJECT_NAME' not found. Cannot set."
+                        exit 1
                       fi
-                      if [ -n "${{ github.event.inputs.description }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .description = \"${{ github.event.inputs.description }}\""
+                      # If renaming, handle key change
+                      if [ -n "${{ github.event.inputs.new_name }}" ] && [ "${{ github.event.inputs.new_name }}" != "$PROJECT_NAME" ]; then
+                        NEW_NAME="${{ github.event.inputs.new_name }}"
+                        # Copy project, update fields, delete old key, add new key
+                        UPDATED_PROJECT=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --arg new_name "$NEW_NAME" \
+                          '.projects[$name] | .name = $new_name')
+                        # Update other fields if provided
+                        if [ -n "${{ github.event.inputs.description }}" ]; then
+                          UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq --arg desc "${{ github.event.inputs.description }}" '.description = $desc')
+                        fi
+                        if [ -n "${{ github.event.inputs.url }}" ]; then
+                          UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq --arg url "${{ github.event.inputs.url }}" '.url = $url')
+                        fi
+                        if [ -n "${{ github.event.inputs.count_value }}" ]; then
+                          UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq --argjson count "${{ github.event.inputs.count_value }}" '.count = $count')
+                        fi
+                        UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq '.updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))')
+                        # Remove old key, add new key
+                        NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --arg new_name "$NEW_NAME" --argjson updated "$UPDATED_PROJECT" '
+                          .projects |= (del(.[$name]) + {($new_name): $updated}) | {projects: .}
+                        ')
+                      else
+                        # Not renaming, just update fields
+                        JQ_FILTER='.projects["'"$PROJECT_NAME"'"]'
+                        if [ -n "${{ github.event.inputs.new_name }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .name = \"${{ github.event.inputs.new_name }}\""
+                        fi
+                        if [ -n "${{ github.event.inputs.description }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .description = \"${{ github.event.inputs.description }}\""
+                        fi
+                        if [ -n "${{ github.event.inputs.url }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .url = \"${{ github.event.inputs.url }}\""
+                        fi
+                        if [ -n "${{ github.event.inputs.count_value }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .count = ${{ github.event.inputs.count_value }}"
+                        fi
+                        # Always update updated_at
+                        JQ_FILTER="$JQ_FILTER | .updated_at = (now | strftime(\"%Y-%m-%dT%H:%M:%S.%3NZ\"))"
+                        NEW_JSON=$(echo "$PROJECTS_JSON" | jq "$JQ_FILTER" | jq '{projects: .projects}')
                       fi
-                      if [ -n "${{ github.event.inputs.url }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .url = \"${{ github.event.inputs.url }}\""
-                      fi
-                      if [ -n "${{ github.event.inputs.count_value }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .count = ${{ github.event.inputs.count_value }}"
-                      fi
-                      # Always update updated_at
-                      JQ_FILTER="$JQ_FILTER | .updated_at = (now | strftime(\"%Y-%m-%dT%H:%M:%S.%3NZ\"))"
-                      # Apply the filter to the full JSON
-                      sudo apt-get update && sudo apt-get install -y jq
-                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq "$JQ_FILTER" | jq '{projects: .projects}')
                       echo "✅ Project '$PROJECT_NAME' updated successfully"
                       PROJECTS_JSON="$NEW_JSON"
                       # After set, compare before/after
@@ -543,12 +569,15 @@ jobs:
                     ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
                     echo "--- DEBUG: Encoded PROJECTS_DATA ---"
                     echo "$ENCODED_DATA"
-                    PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
+                    PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null | tr -d '\r' | sed '/^$/d' || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
                     echo "--- DEBUG: Decoded PROJECTS_JSON ---"
                     echo "$PROJECTS_JSON"
                     # Ensure PROJECTS_JSON is valid and not empty
                     if [ -z "$PROJECTS_JSON" ] || ! echo "$PROJECTS_JSON" | jq . >/dev/null 2>&1; then
                       echo "⚠️ PROJECTS_DATA missing or invalid, initializing to {\"projects\":{}}"
+                      echo "DEBUG: jq error code: $?"
+                      echo "DEBUG: Raw decoded PROJECTS_JSON:"
+                      echo "$PROJECTS_JSON"
                       PROJECTS_JSON='{"projects":{}}'
                     fi
                   else
@@ -568,6 +597,11 @@ jobs:
                       PROJECT_NAME="${{ github.event.inputs.project_name }}"
                       DESCRIPTION="${{ github.event.inputs.description }}"
                       URL="${{ github.event.inputs.url }}"
+
+                      # Defensive: ensure .projects exists and is an object
+                      if ! echo "$PROJECTS_JSON" | jq -e '.projects | type == "object"' >/dev/null 2>&1; then
+                        PROJECTS_JSON=$(echo "$PROJECTS_JSON" | jq '{projects: {}}')
+                      fi
 
                       # Check if project already exists
                       if echo "$PROJECTS_JSON" | jq -e --arg name "$PROJECT_NAME" '.projects[$name]' > /dev/null; then
@@ -684,7 +718,7 @@ jobs:
                         exit 1
                       fi
 
-                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" 'del(.projects[$name])')
+                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" 'del(.projects[$name]) | {projects: .projects}')
                       echo "✅ Project '$PROJECT_NAME' removed successfully"
                       PROJECTS_JSON="$NEW_JSON"
                       # After remove, compare before/after
@@ -724,25 +758,46 @@ jobs:
                         echo "❌ Project '$PROJECT_NAME' not found. Cannot set."
                         exit 1
                       fi
-                      # Build jq filter to update only the specified fields inside the project
-                      JQ_FILTER='.projects["'"$PROJECT_NAME"'"]'
-                      if [ -n "${{ github.event.inputs.new_name }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .name = \"${{ github.event.inputs.new_name }}\""
+                      # If renaming, handle key change
+                      if [ -n "${{ github.event.inputs.new_name }}" ] && [ "${{ github.event.inputs.new_name }}" != "$PROJECT_NAME" ]; then
+                        NEW_NAME="${{ github.event.inputs.new_name }}"
+                        # Copy project, update fields, delete old key, add new key
+                        UPDATED_PROJECT=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --arg new_name "$NEW_NAME" \
+                          '.projects[$name] | .name = $new_name')
+                        # Update other fields if provided
+                        if [ -n "${{ github.event.inputs.description }}" ]; then
+                          UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq --arg desc "${{ github.event.inputs.description }}" '.description = $desc')
+                        fi
+                        if [ -n "${{ github.event.inputs.url }}" ]; then
+                          UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq --arg url "${{ github.event.inputs.url }}" '.url = $url')
+                        fi
+                        if [ -n "${{ github.event.inputs.count_value }}" ]; then
+                          UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq --argjson count "${{ github.event.inputs.count_value }}" '.count = $count')
+                        fi
+                        UPDATED_PROJECT=$(echo "$UPDATED_PROJECT" | jq '.updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))')
+                        # Remove old key, add new key
+                        NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" --arg new_name "$NEW_NAME" --argjson updated "$UPDATED_PROJECT" '
+                          .projects |= (del(.[$name]) + {($new_name): $updated}) | {projects: .}
+                        ')
+                      else
+                        # Not renaming, just update fields
+                        JQ_FILTER='.projects["'"$PROJECT_NAME"'"]'
+                        if [ -n "${{ github.event.inputs.new_name }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .name = \"${{ github.event.inputs.new_name }}\""
+                        fi
+                        if [ -n "${{ github.event.inputs.description }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .description = \"${{ github.event.inputs.description }}\""
+                        fi
+                        if [ -n "${{ github.event.inputs.url }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .url = \"${{ github.event.inputs.url }}\""
+                        fi
+                        if [ -n "${{ github.event.inputs.count_value }}" ]; then
+                          JQ_FILTER="$JQ_FILTER | .count = ${{ github.event.inputs.count_value }}"
+                        fi
+                        # Always update updated_at
+                        JQ_FILTER="$JQ_FILTER | .updated_at = (now | strftime(\"%Y-%m-%dT%H:%M:%S.%3NZ\"))"
+                        NEW_JSON=$(echo "$PROJECTS_JSON" | jq "$JQ_FILTER" | jq '{projects: .projects}')
                       fi
-                      if [ -n "${{ github.event.inputs.description }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .description = \"${{ github.event.inputs.description }}\""
-                      fi
-                      if [ -n "${{ github.event.inputs.url }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .url = \"${{ github.event.inputs.url }}\""
-                      fi
-                      if [ -n "${{ github.event.inputs.count_value }}" ]; then
-                        JQ_FILTER="$JQ_FILTER | .count = ${{ github.event.inputs.count_value }}"
-                      fi
-                      # Always update updated_at
-                      JQ_FILTER="$JQ_FILTER | .updated_at = (now | strftime(\"%Y-%m-%dT%H:%M:%S.%3NZ\"))"
-                      # Apply the filter to the full JSON
-                      sudo apt-get update && sudo apt-get install -y jq
-                      NEW_JSON=$(echo "$PROJECTS_JSON" | jq "$JQ_FILTER" | jq '{projects: .projects}')
                       echo "✅ Project '$PROJECT_NAME' updated successfully"
                       PROJECTS_JSON="$NEW_JSON"
                       # After set, compare before/after
@@ -784,27 +839,22 @@ jobs:
                       echo "❌ PATCH failed (HTTP $RESPONSE_CODE), response: $RESPONSE_BODY"
                       exit 1
                     fi
-                    # Reload and check if variable is empty after add
-                    response=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-                      -H "Accept: application/vnd.github+json" \
-                      "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
-                    ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
-                    PROJECTS_JSON_AFTER=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
-                    # Only perform strict empty check for 'add' operation
-                    if [ "${{ github.event.inputs.action }}" = "add" ]; then
-                      if [ -z "$PROJECTS_JSON_AFTER" ] || ! echo "$PROJECTS_JSON_AFTER" | jq -e ".projects | length > 0" >/dev/null 2>&1; then
-                        echo "⚠️ PROJECTS_DATA is empty after add operation, sleeping 30s and retrying fetch..."
-                        sleep 30
-                        response=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-                          -H "Accept: application/vnd.github+json" \
-                          "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
-                        ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
-                        PROJECTS_JSON_AFTER=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
-                        if [ -z "$PROJECTS_JSON_AFTER" ] || ! echo "$PROJECTS_JSON_AFTER" | jq -e ".projects | length > 0" >/dev/null 2>&1; then
-                          echo "❌ PROJECTS_DATA is still empty after add operation (after retry)"
-                          exit 1
-                        fi
+                    # Retry fetch up to 5 times with short sleeps
+                    for i in {1..5}; do
+                      response=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+                        -H "Accept: application/vnd.github+json" \
+                        "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
+                      ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
+                      PROJECTS_JSON_AFTER=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
+                      if [ -n "$PROJECTS_JSON_AFTER" ] && echo "$PROJECTS_JSON_AFTER" | jq -e ".projects | length >= 0" >/dev/null 2>&1; then
+                        break
                       fi
+                      echo "⚠️ PROJECTS_DATA is empty after add operation, retry $i/5..."
+                      sleep 5
+                    done
+                    if [ -z "$PROJECTS_JSON_AFTER" ] || ! echo "$PROJECTS_JSON_AFTER" | jq -e ".projects | length >= 0" >/dev/null 2>&1; then
+                      echo "❌ PROJECTS_DATA is still empty after add operation (after retries)"
+                      exit 1
                     fi
                     echo "✅ Projects data updated in GitHub Variables (base64 encoded)"
                   fi

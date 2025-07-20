@@ -566,10 +566,13 @@ jobs:
                   echo "$response"
 
                   if echo "$response" | grep -q '"value"'; then
-                    ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
+                    ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4 | tr -d '\n\r ')
                     echo "--- DEBUG: Encoded PROJECTS_DATA ---"
                     echo "$ENCODED_DATA"
-                    PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null | tr -d '\r' | sed '/^$/d' || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
+                    # Try base64 decode, fallback to raw string if it fails
+                    PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
+                    # Clean up: remove any leading/trailing whitespace and blank lines
+                    PROJECTS_JSON=$(echo "$PROJECTS_JSON" | sed 's/^ *//;s/ *$//' | sed '/^$/d')
                     echo "--- DEBUG: Decoded PROJECTS_JSON ---"
                     echo "$PROJECTS_JSON"
                     # Ensure PROJECTS_JSON is valid and not empty
@@ -1006,7 +1009,7 @@ jobs:
                       -H "Accept: application/vnd.github+json" \
                       "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
                     if echo "$response" | grep -q '"value"'; then
-                      ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
+                      ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4 | tr -d '\n\r ')
                       PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
                       echo "Raw projects object (for debugging):"
                       echo "$PROJECTS_JSON" | jq '.projects'

@@ -846,23 +846,6 @@ jobs:
                       echo "❌ PATCH failed (HTTP $RESPONSE_CODE), response: $RESPONSE_BODY"
                       exit 1
                     fi
-                    # Retry fetch up to 5 times with short sleeps
-                    for i in {1..5}; do
-                      response=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-                        -H "Accept: application/vnd.github+json" \
-                        "https://api.github.com/repos/${{ github.repository }}/actions/variables/PROJECTS_DATA" || echo "")
-                      ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4)
-                      PROJECTS_JSON_AFTER=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
-                      if [ -n "$PROJECTS_JSON_AFTER" ] && echo "$PROJECTS_JSON_AFTER" | jq -e ".projects | length >= 0" >/dev/null 2>&1; then
-                        break
-                      fi
-                      echo "⚠️ PROJECTS_DATA is empty after add operation, retry $i/5..."
-                      sleep 5
-                    done
-                    if [ -z "$PROJECTS_JSON_AFTER" ] || ! echo "$PROJECTS_JSON_AFTER" | jq -e ".projects | length >= 0" >/dev/null 2>&1; then
-                      echo "❌ PROJECTS_DATA is still empty after add operation (after retries)"
-                      exit 1
-                    fi
                     echo "✅ Projects data updated in GitHub Variables (base64 encoded)"
                   fi
 

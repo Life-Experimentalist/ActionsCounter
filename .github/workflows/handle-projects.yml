@@ -1,12 +1,12 @@
 # ActionsCounter Dual Mode Workflow
 # Supports both manual workflow_dispatch and webhook repository_dispatch
-#
+
 # VALIDATION NOTES:
 # - "Context access might be invalid" errors for secrets are expected
 # - These will resolve once the workflow is deployed to a GitHub repository
 # - Required secrets: ADMIN_PASSWORD, PAT_TOKEN, DB_* (for database mode)
 # - Required variables: STORAGE_MODE (repository variable, not secret)
-#
+
 name: "Handle Projects"
 
 # NOTE: The lint errors about "Context access might be invalid" for secrets are expected

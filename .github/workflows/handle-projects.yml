@@ -555,6 +555,18 @@ jobs:
             - name: GitHub Variables - Handle Operations
               if: steps.mode.outputs.mode == 'github_variables'
               run: |
+                  # Helper function: robust base64 decode with fallback
+                  decode_projects_data() {
+                    local encoded="$1"
+                    local decoded
+                    decoded=$(echo "$encoded" | base64 -d 2>/dev/null)
+                    if [ -n "$decoded" ]; then
+                      echo "$decoded"
+                    else
+                      echo "$encoded" | sed 's/\\"/"/g'
+                    fi
+                  }
+
                   echo "🔗 Processing GitHub Variables storage operations..."
 
                   # Get current projects data from GitHub Variables
@@ -569,8 +581,8 @@ jobs:
                     ENCODED_DATA=$(echo "$response" | grep -o '"value":"[^\"]*"' | cut -d'"' -f4 | tr -d '\n\r ')
                     echo "--- DEBUG: Encoded PROJECTS_DATA ---"
                     echo "$ENCODED_DATA"
-                    # Try base64 decode, fallback to raw string if it fails
-                    PROJECTS_JSON=$(echo "$ENCODED_DATA" | base64 -d 2>/dev/null || echo "$ENCODED_DATA" | sed 's/\\"/"/g')
+                    # Use handler for robust decode
+                    PROJECTS_JSON=$(decode_projects_data "$ENCODED_DATA")
                     # Clean up: remove any leading/trailing whitespace and blank lines
                     PROJECTS_JSON=$(echo "$PROJECTS_JSON" | sed 's/^ *//;s/ *$//' | sed '/^$/d')
                     echo "--- DEBUG: Decoded PROJECTS_JSON ---"

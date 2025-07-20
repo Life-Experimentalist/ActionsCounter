@@ -590,7 +590,7 @@ jobs:
                           "auth_hash": $auth_hash,
                           "created_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ")),
                           "updated_at": (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
-                        }
+                        } | {projects: .projects}
                       ')
 
                       echo "--- DEBUG: Before add ---"
@@ -629,6 +629,7 @@ jobs:
                         .projects[$name] //= {"count": 0, "created_at": now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"), "updated_at": now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ")} |
                         .projects[$name].count += 1 |
                         .projects[$name].updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
+                        | {projects: .projects}
                       ')
 
                       NEW_COUNT=$(echo "$NEW_JSON" | jq -r --arg name "$PROJECT_NAME" '.projects[$name].count')
@@ -657,6 +658,7 @@ jobs:
                       NEW_JSON=$(echo "$PROJECTS_JSON" | jq --arg name "$PROJECT_NAME" '
                         .projects[$name].count = (.projects[$name].count - 1 | if . < 0 then 0 else . end) |
                         .projects[$name].updated_at = (now | strftime("%Y-%m-%dT%H:%M:%S.%3NZ"))
+                        | {projects: .projects}
                       ')
 
                       NEW_COUNT=$(echo "$NEW_JSON" | jq -r --arg name "$PROJECT_NAME" '.projects[$name].count')

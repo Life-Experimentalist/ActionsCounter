@@ -638,13 +638,10 @@ jobs:
                         } | {projects: .projects}
                       ')
 
-                      echo "--- DEBUG: Before add ---"
-                      cat /tmp/projects_before.json
-                      echo "--- DEBUG: After add ---"
-                      echo "$NEW_JSON"
-
                       # After add, compare before/after
-                      if diff -q <(cat /tmp/projects_before.json) <(echo "$NEW_JSON") >/dev/null; then
+                      PROJECTS_JSON_BEFORE="$PROJECTS_JSON"
+                      PROJECTS_JSON="$NEW_JSON"
+                      if [ "$PROJECTS_JSON_BEFORE" = "$PROJECTS_JSON" ]; then
                         echo "⚠️ No change detected in PROJECTS_DATA after add operation (project may already exist or no-op)."
                         exit 0
                       fi
@@ -652,7 +649,6 @@ jobs:
                       echo "✅ Project '$PROJECT_NAME' added successfully"
                       echo "🔑 Project Alias: $ALIAS"
                       echo "🔐 Project Auth Token (save this securely, it will not be shown again): $AUTH_TOKEN"
-                      PROJECTS_JSON="$NEW_JSON"
                       ;;
 
                     "increment")
@@ -677,14 +673,14 @@ jobs:
                         | {projects: .projects}
                       ')
 
-                      NEW_COUNT=$(echo "$NEW_JSON" | jq -r --arg name "$PROJECT_NAME" '.projects[$name].count')
-                      echo "✅ Project '$PROJECT_NAME' incremented to count: $NEW_COUNT"
-                      PROJECTS_JSON="$NEW_JSON"
                       # After increment, compare before/after
-                      if diff -q <(cat /tmp/projects_before.json) <(echo "$NEW_JSON") >/dev/null; then
+                      PROJECTS_JSON_BEFORE="$PROJECTS_JSON"
+                      PROJECTS_JSON="$NEW_JSON"
+                      if [ "$PROJECTS_JSON_BEFORE" = "$PROJECTS_JSON" ]; then
                         echo "❌ No change detected in PROJECTS_DATA after increment operation"
                         exit 1
                       fi
+                      echo "✅ Project '$PROJECT_NAME' incremented to count: $NEW_COUNT"
                       ;;
 
                     "decrement")
@@ -706,14 +702,14 @@ jobs:
                         | {projects: .projects}
                       ')
 
-                      NEW_COUNT=$(echo "$NEW_JSON" | jq -r --arg name "$PROJECT_NAME" '.projects[$name].count')
-                      echo "✅ Project '$PROJECT_NAME' decremented to count: $NEW_COUNT"
-                      PROJECTS_JSON="$NEW_JSON"
                       # After decrement, compare before/after
-                      if diff -q <(cat /tmp/projects_before.json) <(echo "$NEW_JSON") >/dev/null; then
+                      PROJECTS_JSON_BEFORE="$PROJECTS_JSON"
+                      PROJECTS_JSON="$NEW_JSON"
+                      if [ "$PROJECTS_JSON_BEFORE" = "$PROJECTS_JSON" ]; then
                         echo "❌ No change detected in PROJECTS_DATA after decrement operation"
                         exit 1
                       fi
+                      echo "✅ Project '$PROJECT_NAME' decremented to count: $NEW_COUNT"
                       ;;
 
                     "remove")
